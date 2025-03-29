@@ -40,6 +40,9 @@ import {
   getFollowing,
 } from "@/lib/data-service"
 
+// Add import for the SQL query display component
+import { SqlQueryDisplay } from "@/components/sql-query-display"
+
 interface FilterState {
   users: {
     username: string
@@ -412,7 +415,7 @@ export default function SearchFiltersPage() {
                             <SelectValue placeholder="Select user" />
                           </SelectTrigger>
                           <SelectContent>
-                            {data.users.slice(0, 20).map((user) => (
+                            {data.users.slice(0, 100).map((user) => (
                               <SelectItem key={user.id} value={user.id}>
                                 {user.username}
                               </SelectItem>
@@ -460,7 +463,7 @@ export default function SearchFiltersPage() {
                             <SelectValue placeholder="Select user" />
                           </SelectTrigger>
                           <SelectContent>
-                            {data.users.slice(0, 20).map((user) => (
+                            {data.users.slice(0, 100).map((user) => (
                               <SelectItem key={user.id} value={user.id}>
                                 {user.username}
                               </SelectItem>
@@ -585,23 +588,46 @@ export default function SearchFiltersPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ScrollArea className="h-[600px]">
-                      {activeTab === "users" && (
-                        <div className="space-y-4">
+                    {activeTab === "users" && (
+                      <>
+                        <SqlQueryDisplay
+                          title="SQL Query for User Search"
+                          query={`SELECT id, username, created_at
+FROM users
+${filters.users.username ? `WHERE username LIKE '%${filters.users.username}%'` : ""}
+${
+  filters.users.dateRange?.from
+    ? `${filters.users.username ? "AND" : "WHERE"} created_at BETWEEN 
+  '${filters.users.dateRange.from.toISOString().split("T")[0]}' AND 
+  '${filters.users.dateRange.to ? filters.users.dateRange.to.toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}'`
+    : ""
+}
+ORDER BY created_at DESC
+LIMIT 100;`}
+                        />
+                        <ScrollArea className="h-[500px]">
                           {searchResults.users.length > 0 ? (
                             <div className="grid gap-4">
                               {searchResults.users.slice(0, 20).map((user) => (
-                                <div key={user.id} className="flex items-center p-3 border rounded-md">
-                                  <Avatar className="h-10 w-10 mr-3">
+                                <div
+                                  key={user.id}
+                                  className="flex items-center p-4 border rounded-md hover:bg-muted/50 transition-colors"
+                                >
+                                  <Avatar className="h-12 w-12 mr-4">
                                     <AvatarImage
-                                      src={`/placeholder.svg?height=40&width=40&text=${user.username.charAt(0)}`}
+                                      src={`/placeholder.svg?height=48&width=48&text=${user.username.charAt(0)}`}
                                     />
                                     <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                                   </Avatar>
-                                  <div>
-                                    <p className="font-medium">{user.username}</p>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-base mb-1">{user.username}</p>
                                     <p className="text-sm text-muted-foreground">
-                                      Created: {new Date(user.created_at).toLocaleDateString()}
+                                      <span className="font-medium">ID:</span> {user.id}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                      <span className="font-medium">Created:</span>{" "}
+                                      {new Date(user.created_at).toLocaleDateString()}{" "}
+                                      {new Date(user.created_at).toLocaleTimeString()}
                                     </p>
                                   </div>
                                 </div>
@@ -612,13 +638,52 @@ export default function SearchFiltersPage() {
                               <p className="text-muted-foreground">No users found matching your criteria</p>
                             </div>
                           )}
-                        </div>
-                      )}
+                        </ScrollArea>
+                      </>
+                    )}
 
-                      {activeTab === "photos" && (
-                        <div className="space-y-4">
+                    {activeTab === "photos" && (
+                      <>
+                        <SqlQueryDisplay
+                          title="SQL Query for Photo Search"
+                          query={`SELECT p.id, p.image_url, p.user_id, p.created_dat, u.username
+FROM photos p
+JOIN users u ON p.user_id = u.id
+${filters.photos.userId ? `WHERE p.user_id = '${filters.photos.userId}'` : ""}
+${
+  filters.photos.dateRange?.from
+    ? `${filters.photos.userId ? "AND" : "WHERE"} p.created_dat BETWEEN 
+  '${filters.photos.dateRange.from.toISOString().split("T")[0]}' AND 
+  '${filters.photos.dateRange.to ? filters.photos.dateRange.to.toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}'`
+    : ""
+}
+${
+  filters.photos.tags
+    ? `${filters.photos.userId || filters.photos.dateRange?.from ? "AND" : "WHERE"} p.id IN (
+    SELECT pt.photo_id FROM photo_tags pt
+    JOIN tags t ON pt.tag_id = t.id
+    WHERE t.tag_name IN (${filters.photos.tags
+      .split(",")
+      .map((t) => `'${t.trim()}'`)
+      .join(", ")})
+  )`
+    : ""
+}
+${
+  filters.photos.minLikes > 0
+    ? `${filters.photos.userId || filters.photos.dateRange?.from || filters.photos.tags ? "AND" : "WHERE"} p.id IN (
+    SELECT photo_id FROM likes
+    GROUP BY photo_id
+    HAVING COUNT(*) >= ${filters.photos.minLikes}
+  )`
+    : ""
+}
+ORDER BY p.created_dat DESC
+LIMIT 100;`}
+                        />
+                        <ScrollArea className="h-[500px]">
                           {searchResults.photos.length > 0 ? (
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               {searchResults.photos.slice(0, 20).map((photo) => {
                                 const user = data.users.find((u) => u.id === photo.user_id)
                                 const photoTags = data.photoTags
@@ -630,29 +695,56 @@ export default function SearchFiltersPage() {
                                   .filter(Boolean)
 
                                 const likeCount = data.likes.filter((like) => like.photo_id === photo.id).length
+                                const commentCount = data.comments.filter(
+                                  (comment) => comment.photo_id === photo.id,
+                                ).length
 
                                 return (
-                                  <div key={photo.id} className="border rounded-md overflow-hidden">
-                                    <img
-                                      src={`/placeholder.svg?height=150&width=150&text=Photo${photo.id}`}
-                                      alt={`Photo ${photo.id}`}
-                                      className="w-full h-32 object-cover"
-                                    />
-                                    <div className="p-2">
-                                      <div className="flex justify-between items-center">
-                                        <p className="text-sm font-medium">{user?.username || "Unknown"}</p>
-                                        <p className="text-xs text-muted-foreground">{likeCount} likes</p>
+                                  <div
+                                    key={photo.id}
+                                    className="border rounded-md overflow-hidden hover:shadow-md transition-shadow"
+                                  >
+                                    <div className="aspect-square relative bg-muted">
+                                      <img
+                                        src={`/placeholder.svg?height=300&width=300&text=Photo${photo.id}`}
+                                        alt={`Photo ${photo.id}`}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
+                                    <div className="p-4">
+                                      <div className="flex justify-between items-center mb-2">
+                                        <div className="flex items-center">
+                                          <Avatar className="h-6 w-6 mr-2">
+                                            <AvatarImage
+                                              src={`/placeholder.svg?height=24&width=24&text=${user?.username?.charAt(0) || "?"}`}
+                                            />
+                                            <AvatarFallback>
+                                              {user?.username?.charAt(0).toUpperCase() || "?"}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <p className="font-medium text-sm truncate max-w-[120px]">
+                                            {user?.username || "Unknown"}
+                                          </p>
+                                        </div>
+                                        <div className="flex items-center space-x-2 text-muted-foreground text-xs">
+                                          <span>{likeCount} likes</span>
+                                          <span>•</span>
+                                          <span>{commentCount} comments</span>
+                                        </div>
                                       </div>
-                                      <div className="flex flex-wrap gap-1 mt-1">
-                                        {photoTags.slice(0, 3).map((tag, j) => (
+                                      <div className="text-xs text-muted-foreground mb-2">
+                                        <span className="font-medium">ID:</span> {photo.id} •{" "}
+                                        <span className="font-medium">Created:</span>{" "}
+                                        {new Date(photo.created_dat).toLocaleDateString()}
+                                      </div>
+                                      <div className="flex flex-wrap gap-1 mt-2">
+                                        {photoTags.map((tag, j) => (
                                           <Badge key={j} variant="outline" className="text-xs">
                                             {tag}
                                           </Badge>
                                         ))}
-                                        {photoTags.length > 3 && (
-                                          <Badge variant="outline" className="text-xs">
-                                            +{photoTags.length - 3} more
-                                          </Badge>
+                                        {photoTags.length === 0 && (
+                                          <span className="text-xs text-muted-foreground">No tags</span>
                                         )}
                                       </div>
                                     </div>
@@ -665,35 +757,81 @@ export default function SearchFiltersPage() {
                               <p className="text-muted-foreground">No photos found matching your criteria</p>
                             </div>
                           )}
-                        </div>
-                      )}
+                        </ScrollArea>
+                      </>
+                    )}
 
-                      {activeTab === "comments" && (
-                        <div className="space-y-4">
+                    {activeTab === "comments" && (
+                      <>
+                        <SqlQueryDisplay
+                          title="SQL Query for Comment Search"
+                          query={`SELECT c.id, c.comment_text, c.user_id, c.photo_id, c.created_at, u.username
+FROM comments c
+JOIN users u ON c.user_id = u.id
+${filters.comments.userId ? `WHERE c.user_id = '${filters.comments.userId}'` : ""}
+${
+  filters.comments.photoId
+    ? `${filters.comments.userId ? "AND" : "WHERE"} c.photo_id = '${filters.comments.photoId}'`
+    : ""
+}
+${
+  filters.comments.keyword
+    ? `${filters.comments.userId || filters.comments.photoId ? "AND" : "WHERE"} c.comment_text LIKE '%${filters.comments.keyword}%'`
+    : ""
+}
+${
+  filters.comments.dateRange?.from
+    ? `${filters.comments.userId || filters.comments.photoId || filters.comments.keyword ? "AND" : "WHERE"} c.created_at BETWEEN 
+  '${filters.comments.dateRange.from.toISOString().split("T")[0]}' AND 
+  '${filters.comments.dateRange.to ? filters.comments.dateRange.to.toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}'`
+    : ""
+}
+ORDER BY c.created_at DESC
+LIMIT 100;`}
+                        />
+                        <ScrollArea className="h-[500px]">
                           {searchResults.comments.length > 0 ? (
                             <div className="grid gap-4">
                               {searchResults.comments.slice(0, 20).map((comment) => {
                                 const user = data.users.find((u) => u.id === comment.user_id)
+                                const photo = data.photos.find((p) => p.id === comment.photo_id)
 
                                 return (
-                                  <div key={comment.id} className="p-3 border rounded-md">
-                                    <div className="flex items-center mb-2">
-                                      <Avatar className="h-6 w-6 mr-2">
+                                  <div
+                                    key={comment.id}
+                                    className="p-4 border rounded-md hover:bg-muted/50 transition-colors"
+                                  >
+                                    <div className="flex items-center mb-3">
+                                      <Avatar className="h-8 w-8 mr-2">
                                         <AvatarImage
-                                          src={`/placeholder.svg?height=24&width=24&text=${user?.username?.charAt(0) || "?"}`}
+                                          src={`/placeholder.svg?height=32&width=32&text=${user?.username?.charAt(0) || "?"}`}
                                         />
                                         <AvatarFallback>
                                           {user?.username?.charAt(0).toUpperCase() || "?"}
                                         </AvatarFallback>
                                       </Avatar>
-                                      <p className="text-sm font-medium">{user?.username || "Unknown"}</p>
-                                      <p className="text-xs text-muted-foreground ml-auto">
-                                        {new Date(comment.created_at).toLocaleDateString()}
-                                      </p>
+                                      <div>
+                                        <p className="text-sm font-medium">{user?.username || "Unknown"}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {new Date(comment.created_at).toLocaleDateString()}{" "}
+                                          {new Date(comment.created_at).toLocaleTimeString()}
+                                        </p>
+                                      </div>
                                     </div>
-                                    <p className="text-sm">{comment.comment_text}</p>
-                                    <div className="mt-2 text-xs text-muted-foreground">
-                                      On photo #{comment.photo_id}
+                                    <p className="text-sm mb-3 whitespace-pre-line">{comment.comment_text}</p>
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                      <div>
+                                        <span className="font-medium">Comment ID:</span> {comment.id}
+                                      </div>
+                                      <div>
+                                        <span className="font-medium">On photo:</span> {comment.photo_id}
+                                        {photo && (
+                                          <span>
+                                            {" "}
+                                            by {data.users.find((u) => u.id === photo.user_id)?.username || "Unknown"}
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                 )
@@ -704,25 +842,70 @@ export default function SearchFiltersPage() {
                               <p className="text-muted-foreground">No comments found matching your criteria</p>
                             </div>
                           )}
-                        </div>
-                      )}
+                        </ScrollArea>
+                      </>
+                    )}
 
-                      {activeTab === "tags" && (
-                        <div className="space-y-4">
+                    {activeTab === "tags" && (
+                      <>
+                        <SqlQueryDisplay
+                          title="SQL Query for Tag Search"
+                          query={`SELECT t.id, t.tag_name, t.created_at, COUNT(pt.photo_id) as popularity
+FROM tags t
+LEFT JOIN photo_tags pt ON t.id = pt.tag_id
+${filters.tags.name ? `WHERE t.tag_name LIKE '%${filters.tags.name}%'` : ""}
+GROUP BY t.id, t.tag_name, t.created_at
+${filters.tags.minPopularity > 0 ? `HAVING COUNT(pt.photo_id) >= ${filters.tags.minPopularity}` : ""}
+ORDER BY popularity DESC
+LIMIT 100;`}
+                        />
+                        <ScrollArea className="h-[500px]">
                           {searchResults.tags.length > 0 ? (
                             <div className="grid gap-4">
                               {searchResults.tags.slice(0, 20).map((tag) => {
                                 const popularity = data.photoTags.filter((pt) => pt.tag_id === tag.id).length
+                                const recentPhotos = data.photoTags
+                                  .filter((pt) => pt.tag_id === tag.id)
+                                  .map((pt) => pt.photo_id)
+                                  .slice(0, 3)
 
                                 return (
-                                  <div key={tag.id} className="flex justify-between items-center p-3 border rounded-md">
-                                    <div>
-                                      <p className="font-medium">#{tag.tag_name}</p>
-                                      <p className="text-sm text-muted-foreground">
-                                        Created: {new Date(tag.created_at).toLocaleDateString()}
-                                      </p>
+                                  <div
+                                    key={tag.id}
+                                    className="p-4 border rounded-md hover:bg-muted/50 transition-colors"
+                                  >
+                                    <div className="flex justify-between items-start mb-3">
+                                      <div>
+                                        <h3 className="font-medium text-base mb-1">#{tag.tag_name}</h3>
+                                        <p className="text-xs text-muted-foreground mb-1">
+                                          <span className="font-medium">ID:</span> {tag.id}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          <span className="font-medium">Created:</span>{" "}
+                                          {new Date(tag.created_at).toLocaleDateString()}
+                                        </p>
+                                      </div>
+                                      <Badge className="ml-2">{popularity} photos</Badge>
                                     </div>
-                                    <Badge>{popularity} photos</Badge>
+
+                                    {recentPhotos.length > 0 && (
+                                      <div className="mt-3">
+                                        <p className="text-xs text-muted-foreground mb-2">
+                                          Recent photos with this tag:
+                                        </p>
+                                        <div className="flex space-x-2">
+                                          {recentPhotos.map((photoId) => (
+                                            <div key={photoId} className="w-12 h-12 rounded bg-muted overflow-hidden">
+                                              <img
+                                                src={`/placeholder.svg?height=48&width=48&text=${photoId}`}
+                                                alt={`Photo ${photoId}`}
+                                                className="w-full h-full object-cover"
+                                              />
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                 )
                               })}
@@ -732,11 +915,40 @@ export default function SearchFiltersPage() {
                               <p className="text-muted-foreground">No tags found matching your criteria</p>
                             </div>
                           )}
-                        </div>
-                      )}
+                        </ScrollArea>
+                      </>
+                    )}
 
-                      {activeTab === "follows" && (
-                        <div className="space-y-4">
+                    {activeTab === "follows" && (
+                      <>
+                        <SqlQueryDisplay
+                          title="SQL Query for Follow Relationship Search"
+                          query={`${
+                            filters.follows.relationship === "followers"
+                              ? `SELECT f.follower_id, f.followee_id, f.created_at, 
+       u1.username as follower_username, u2.username as followee_username
+FROM follows f
+JOIN users u1 ON f.follower_id = u1.id
+JOIN users u2 ON f.followee_id = u2.id
+WHERE f.followee_id = '${filters.follows.userId}'`
+                              : `SELECT f.follower_id, f.followee_id, f.created_at, 
+       u1.username as follower_username, u2.username as followee_username
+FROM follows f
+JOIN users u1 ON f.follower_id = u1.id
+JOIN users u2 ON f.followee_id = u2.id
+WHERE f.follower_id = '${filters.follows.userId}'`
+                          }
+${
+  filters.follows.dateRange?.from
+    ? ` AND f.created_at BETWEEN 
+  '${filters.follows.dateRange.from.toISOString().split("T")[0]}' AND 
+  '${filters.follows.dateRange.to ? filters.follows.dateRange.to.toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}'`
+    : ""
+}
+ORDER BY f.created_at DESC
+LIMIT 100;`}
+                        />
+                        <ScrollArea className="h-[500px]">
                           {searchResults.follows.length > 0 ? (
                             <div className="grid gap-4">
                               {searchResults.follows.slice(0, 20).map((follow, i) => {
@@ -744,21 +956,32 @@ export default function SearchFiltersPage() {
                                 const followee = data.users.find((u) => u.id === follow.followee_id)
 
                                 return (
-                                  <div key={i} className="flex items-center justify-between p-3 border rounded-md">
+                                  <div
+                                    key={i}
+                                    className="flex items-center justify-between p-4 border rounded-md hover:bg-muted/50 transition-colors"
+                                  >
                                     <div className="flex items-center">
-                                      <Avatar className="h-10 w-10 mr-3">
+                                      <Avatar className="h-12 w-12 mr-4">
                                         <AvatarImage
-                                          src={`/placeholder.svg?height=40&width=40&text=${follower?.username?.charAt(0) || "?"}`}
+                                          src={`/placeholder.svg?height=48&width=48&text=${follower?.username?.charAt(0) || "?"}`}
                                         />
                                         <AvatarFallback>
                                           {follower?.username?.charAt(0).toUpperCase() || "?"}
                                         </AvatarFallback>
                                       </Avatar>
                                       <div>
-                                        <p className="font-medium">{follower?.username || "Unknown"}</p>
-                                        <p className="text-sm text-muted-foreground">
-                                          follows {followee?.username || "Unknown"} since{" "}
+                                        <div className="flex items-center">
+                                          <p className="font-medium">{follower?.username || "Unknown"}</p>
+                                          <span className="mx-2 text-muted-foreground">→</span>
+                                          <p className="font-medium">{followee?.username || "Unknown"}</p>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground mt-1">
+                                          <span className="font-medium">Since:</span>{" "}
                                           {new Date(follow.created_at).toLocaleDateString()}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          <span className="font-medium">Follower ID:</span> {follow.follower_id} •{" "}
+                                          <span className="font-medium">Followee ID:</span> {follow.followee_id}
                                         </p>
                                       </div>
                                     </div>
@@ -776,9 +999,9 @@ export default function SearchFiltersPage() {
                               </p>
                             </div>
                           )}
-                        </div>
-                      )}
-                    </ScrollArea>
+                        </ScrollArea>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               ) : (

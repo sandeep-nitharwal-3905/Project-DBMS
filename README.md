@@ -87,20 +87,13 @@ The project aims to:
   - Trending tags over time
   - User preferences based on tags
 
-### 3. CSV Management
-- **File Upload**: Upload CSV files with drag-and-drop functionality
-- **Data Editing**: View and edit CSV data in an interactive table
-- **Data Validation**: Validate data integrity with customizable rules
-- **File Export**: Export modified data back to CSV format
-- **File Management**: List, open, and delete saved CSV files
-
-### 4. Interactive Visualizations
+### 3. Interactive Visualizations
 - **Line Charts**: Visualize trends over time
 - **Bar Charts**: Compare metrics across different entities
 - **Pie Charts**: Analyze distribution of data
 - **Heatmaps**: Visualize relationships between users and tags
 
-### 5. SQL Query Display
+### 4. SQL Query Display
 - View the equivalent SQL queries for each data operation
 - Copy queries for use in external database systems
 

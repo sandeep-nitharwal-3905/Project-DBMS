@@ -1,6 +1,6 @@
 # Instagram Data Analysis Project
 
-<img src="./public/image.png" alt="Instagram Data Analysis" width="500" height="500"/>
+<img src="./public/image.png" alt="Instagram Data Analysis" width="50" height="50"/>
 
 A comprehensive web application for analyzing Instagram data patterns, user engagement, and content performance with powerful analytics tools.
 

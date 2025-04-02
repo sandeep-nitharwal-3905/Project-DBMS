@@ -1,6 +1,6 @@
 # Instagram Data Analysis Project
 
-![Instagram Data Analysis](https://placeholder.svg?height=200&width=600&text=Instagram+Data+Analysis)
+![Instagram Data Analysis](./public/image.png)
 
 A comprehensive web application for analyzing Instagram data patterns, user engagement, and content performance with powerful analytics tools.
 
@@ -113,5 +113,4 @@ The project aims to:
 
 ### Clone the Repository
 ```bash
-git clone https://github.com/yourusername/instagram-data-analysis.git
-cd instagram-data-analysis
+git clone https://github.com/SandeepNitharwal/DBMS-Project.git

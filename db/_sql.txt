@@ -1,0 +1,416 @@
+# Instagram Data Analysis Project - SQL Queries
+# =============================================
+#
+# This file contains all the SQL queries used in the Instagram Data Analysis project.
+# Each query is accompanied by a descriptive heading explaining its purpose.
+#
+# Table of Contents:
+# -----------------
+# 1. User Search Queries
+# 2. Photo Search Queries
+# 3. Comment Search Queries
+# 4. Tag Search Queries
+# 5. Follow Relationship Queries
+# 6. User Activity Analysis Queries
+# 7. Engagement Analysis Queries
+# 8. Social Network Analysis Queries
+# 9. Tag Analysis Queries
+
+
+# =============================================
+# 1. USER SEARCH QUERIES
+# =============================================
+
+# 1.1 Basic User Search by Username
+# Purpose: Search for users whose usernames contain a specific string
+SELECT id, username, created_at
+FROM users
+WHERE username LIKE '%{username}%'
+ORDER BY created_at DESC
+LIMIT 100;
+
+# 1.2 User Search by Date Range
+# Purpose: Find users who created their accounts within a specific date range
+SELECT id, username, created_at
+FROM users
+WHERE created_at BETWEEN '{start_date}' AND '{end_date}'
+ORDER BY created_at DESC
+LIMIT 100;
+
+# 1.3 User Search by Username and Date Range
+# Purpose: Combined search for users by both username and creation date
+SELECT id, username, created_at
+FROM users
+WHERE username LIKE '%{username}%'
+AND created_at BETWEEN '{start_date}' AND '{end_date}'
+ORDER BY created_at DESC
+LIMIT 100;
+
+
+# =============================================
+# 2. PHOTO SEARCH QUERIES
+# =============================================
+
+# 2.1 Photos by User
+# Purpose: Find all photos uploaded by a specific user
+SELECT p.id, p.image_url, p.user_id, p.created_dat, u.username
+FROM photos p
+JOIN users u ON p.user_id = u.id
+WHERE p.user_id = '{user_id}'
+ORDER BY p.created_dat DESC
+LIMIT 100;
+
+# 2.2 Photos by Date Range
+# Purpose: Find photos uploaded within a specific date range
+SELECT p.id, p.image_url, p.user_id, p.created_dat, u.username
+FROM photos p
+JOIN users u ON p.user_id = u.id
+WHERE p.created_dat BETWEEN '{start_date}' AND '{end_date}'
+ORDER BY p.created_dat DESC
+LIMIT 100;
+
+# 2.3 Photos by Tags
+# Purpose: Find photos that have specific tags
+SELECT p.id, p.image_url, p.user_id, p.created_dat, u.username
+FROM photos p
+JOIN users u ON p.user_id = u.id
+WHERE p.id IN (
+  SELECT pt.photo_id FROM photo_tags pt
+  JOIN tags t ON pt.tag_id = t.id
+  WHERE t.tag_name IN ({tag_list})
+)
+ORDER BY p.created_dat DESC
+LIMIT 100;
+
+# 2.4 Photos with Minimum Likes
+# Purpose: Find photos that have at least a specified number of likes
+SELECT p.id, p.image_url, p.user_id, p.created_dat, u.username
+FROM photos p
+JOIN users u ON p.user_id = u.id
+WHERE p.id IN (
+  SELECT photo_id FROM likes
+  GROUP BY photo_id
+  HAVING COUNT(*) >= {min_likes}
+)
+ORDER BY p.created_dat DESC
+LIMIT 100;
+
+# 2.5 Combined Photo Search
+# Purpose: Search photos with multiple criteria (user, date, tags, minimum likes)
+SELECT p.id, p.image_url, p.user_id, p.created_dat, u.username
+FROM photos p
+JOIN users u ON p.user_id = u.id
+WHERE p.user_id = '{user_id}'
+AND p.created_dat BETWEEN '{start_date}' AND '{end_date}'
+AND p.id IN (
+  SELECT pt.photo_id FROM photo_tags pt
+  JOIN tags t ON pt.tag_id = t.id
+  WHERE t.tag_name IN ({tag_list})
+)
+AND p.id IN (
+  SELECT photo_id FROM likes
+  GROUP BY photo_id
+  HAVING COUNT(*) >= {min_likes}
+)
+ORDER BY p.created_dat DESC
+LIMIT 100;
+
+
+# =============================================
+# 3. COMMENT SEARCH QUERIES
+# =============================================
+
+# 3.1 Comments by User
+# Purpose: Find all comments made by a specific user
+SELECT c.id, c.comment_text, c.user_id, c.photo_id, c.created_at, u.username
+FROM comments c
+JOIN users u ON c.user_id = u.id
+WHERE c.user_id = '{user_id}'
+ORDER BY c.created_at DESC
+LIMIT 100;
+
+# 3.2 Comments on a Specific Photo
+# Purpose: Find all comments on a specific photo
+SELECT c.id, c.comment_text, c.user_id, c.photo_id, c.created_at, u.username
+FROM comments c
+JOIN users u ON c.user_id = u.id
+WHERE c.photo_id = '{photo_id}'
+ORDER BY c.created_at DESC
+LIMIT 100;
+
+# 3.3 Comments Containing a Keyword
+# Purpose: Find comments that contain a specific keyword
+SELECT c.id, c.comment_text, c.user_id, c.photo_id, c.created_at, u.username
+FROM comments c
+JOIN users u ON c.user_id = u.id
+WHERE c.comment_text LIKE '%{keyword}%'
+ORDER BY c.created_at DESC
+LIMIT 100;
+
+# 3.4 Comments by Date Range
+# Purpose: Find comments made within a specific date range
+SELECT c.id, c.comment_text, c.user_id, c.photo_id, c.created_at, u.username
+FROM comments c
+JOIN users u ON c.user_id = u.id
+WHERE c.created_at BETWEEN '{start_date}' AND '{end_date}'
+ORDER BY c.created_at DESC
+LIMIT 100;
+
+# 3.5 Combined Comment Search
+# Purpose: Search comments with multiple criteria (user, photo, keyword, date)
+SELECT c.id, c.comment_text, c.user_id, c.photo_id, c.created_at, u.username
+FROM comments c
+JOIN users u ON c.user_id = u.id
+WHERE c.user_id = '{user_id}'
+AND c.photo_id = '{photo_id}'
+AND c.comment_text LIKE '%{keyword}%'
+AND c.created_at BETWEEN '{start_date}' AND '{end_date}'
+ORDER BY c.created_at DESC
+LIMIT 100;
+
+
+# =============================================
+# 4. TAG SEARCH QUERIES
+# =============================================
+
+# 4.1 Tags by Name
+# Purpose: Find tags whose names contain a specific string
+SELECT t.id, t.tag_name, t.created_at, COUNT(pt.photo_id) as popularity
+FROM tags t
+LEFT JOIN photo_tags pt ON t.id = pt.tag_id
+WHERE t.tag_name LIKE '%{tag_name}%'
+GROUP BY t.id, t.tag_name, t.created_at
+ORDER BY popularity DESC
+LIMIT 100;
+
+# 4.2 Tags by Popularity
+# Purpose: Find tags with at least a specified number of photos
+SELECT t.id, t.tag_name, t.created_at, COUNT(pt.photo_id) as popularity
+FROM tags t
+LEFT JOIN photo_tags pt ON t.id = pt.tag_id
+GROUP BY t.id, t.tag_name, t.created_at
+HAVING COUNT(pt.photo_id) >= {min_popularity}
+ORDER BY popularity DESC
+LIMIT 100;
+
+# 4.3 Combined Tag Search
+# Purpose: Search tags by both name and minimum popularity
+SELECT t.id, t.tag_name, t.created_at, COUNT(pt.photo_id) as popularity
+FROM tags t
+LEFT JOIN photo_tags pt ON t.id = pt.tag_id
+WHERE t.tag_name LIKE '%{tag_name}%'
+GROUP BY t.id, t.tag_name, t.created_at
+HAVING COUNT(pt.photo_id) >= {min_popularity}
+ORDER BY popularity DESC
+LIMIT 100;
+
+
+# =============================================
+# 5. FOLLOW RELATIONSHIP QUERIES
+# =============================================
+
+# 5.1 Followers of a User
+# Purpose: Find all users who follow a specific user
+SELECT f.follower_id, f.followee_id, f.created_at, 
+       u1.username as follower_username, u2.username as followee_username
+FROM follows f
+JOIN users u1 ON f.follower_id = u1.id
+JOIN users u2 ON f.followee_id = u2.id
+WHERE f.followee_id = '{user_id}'
+ORDER BY f.created_at DESC
+LIMIT 100;
+
+# 5.2 Users Followed by a User
+# Purpose: Find all users followed by a specific user
+SELECT f.follower_id, f.followee_id, f.created_at, 
+       u1.username as follower_username, u2.username as followee_username
+FROM follows f
+JOIN users u1 ON f.follower_id = u1.id
+JOIN users u2 ON f.followee_id = u2.id
+WHERE f.follower_id = '{user_id}'
+ORDER BY f.created_at DESC
+LIMIT 100;
+
+# 5.3 Follow Relationships by Date Range
+# Purpose: Find follow relationships created within a specific date range
+SELECT f.follower_id, f.followee_id, f.created_at, 
+       u1.username as follower_username, u2.username as followee_username
+FROM follows f
+JOIN users u1 ON f.follower_id = u1.id
+JOIN users u2 ON f.followee_id = u2.id
+WHERE f.created_at BETWEEN '{start_date}' AND '{end_date}'
+ORDER BY f.created_at DESC
+LIMIT 100;
+
+# 5.4 Combined Follow Relationship Search
+# Purpose: Search follow relationships with multiple criteria (user, relationship type, date)
+SELECT f.follower_id, f.followee_id, f.created_at, 
+       u1.username as follower_username, u2.username as followee_username
+FROM follows f
+JOIN users u1 ON f.follower_id = u1.id
+JOIN users u2 ON f.followee_id = u2.id
+WHERE f.followee_id = '{user_id}'
+AND f.created_at BETWEEN '{start_date}' AND '{end_date}'
+ORDER BY f.created_at DESC
+LIMIT 100;
+
+
+# =============================================
+# 6. USER ACTIVITY ANALYSIS QUERIES
+# =============================================
+
+# 6.1 New Users Over Time
+# Purpose: Count the number of new user accounts created per day
+SELECT DATE(created_at) as date, COUNT(*) as count
+FROM users
+WHERE created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL {time_range})
+GROUP BY DATE(created_at)
+ORDER BY date;
+
+# 6.2 Most Active Users
+# Purpose: Find users with the most posts, likes, and comments
+SELECT u.username,
+       COUNT(DISTINCT p.id) as posts,
+       COUNT(DISTINCT l.photo_id) as likes,
+       COUNT(DISTINCT c.id) as comments
+FROM users u
+LEFT JOIN photos p ON u.id = p.user_id
+LEFT JOIN likes l ON u.id = l.user_id
+LEFT JOIN comments c ON u.id = c.user_id
+WHERE 
+  (p.created_dat >= DATE_SUB(CURRENT_DATE(), INTERVAL {time_range}) OR p.id IS NULL)
+  AND (l.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL {time_range}) OR l.photo_id IS NULL)
+  AND (c.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL {time_range}) OR c.id IS NULL)
+GROUP BY u.id, u.username
+ORDER BY (COUNT(DISTINCT p.id) + COUNT(DISTINCT l.photo_id) + COUNT(DISTINCT c.id)) DESC
+LIMIT 5;
+
+
+# =============================================
+# 7. ENGAGEMENT ANALYSIS QUERIES
+# =============================================
+
+# 7.1 Photo Likes Trend
+# Purpose: Count the number of likes received on all photos per day
+SELECT DATE(created_at) as date, COUNT(*) as count
+FROM likes
+WHERE created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL {time_range})
+GROUP BY DATE(created_at)
+ORDER BY date;
+
+# 7.2 Top Liked Photos
+# Purpose: Find photos with the highest number of likes
+SELECT p.id as photoId, u.username, COUNT(l.photo_id) as likes
+FROM photos p
+JOIN users u ON p.user_id = u.id
+JOIN likes l ON p.id = l.photo_id
+WHERE l.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL {time_range})
+GROUP BY p.id, u.username
+ORDER BY likes DESC
+LIMIT 5;
+
+# 7.3 Top Commented Photos
+# Purpose: Find photos with the highest number of comments
+SELECT p.id as photoId, u.username, COUNT(c.id) as comments
+FROM photos p
+JOIN users u ON p.user_id = u.id
+JOIN comments c ON p.id = c.photo_id
+WHERE c.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL {time_range})
+GROUP BY p.id, u.username
+ORDER BY comments DESC
+LIMIT 5;
+
+# 7.4 Most Engaging Users
+# Purpose: Find users whose content receives the most likes and comments
+SELECT u.username,
+       COUNT(l.photo_id) as likes,
+       COUNT(c.id) as comments
+FROM users u
+JOIN photos p ON u.id = p.user_id
+LEFT JOIN likes l ON p.id = l.photo_id
+LEFT JOIN comments c ON p.id = c.photo_id
+WHERE 
+  (l.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL {time_range}) OR l.photo_id IS NULL)
+  AND (c.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL {time_range}) OR c.id IS NULL)
+GROUP BY u.id, u.username
+ORDER BY (COUNT(l.photo_id) + COUNT(c.id)) DESC
+LIMIT 5;
+
+
+# =============================================
+# 8. SOCIAL NETWORK ANALYSIS QUERIES
+# =============================================
+
+# 8.1 Follower Growth Over Time
+# Purpose: Count the number of new followers gained per day
+SELECT DATE(created_at) as date, COUNT(*) as count
+FROM follows
+WHERE created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL {time_range})
+GROUP BY DATE(created_at)
+ORDER BY date;
+
+# 8.2 Most Followed Users
+# Purpose: Find users with the highest number of followers
+SELECT u.username, COUNT(f.follower_id) as followers
+FROM users u
+JOIN follows f ON u.id = f.followee_id
+WHERE f.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL {time_range})
+GROUP BY u.id, u.username
+ORDER BY followers DESC
+LIMIT 5;
+
+
+# =============================================
+# 9. TAG ANALYSIS QUERIES
+# =============================================
+
+# 9.1 Most Used Tags
+# Purpose: Find tags with the highest frequency of occurrence in photos
+SELECT t.tag_name as name, COUNT(pt.photo_id) as count
+FROM tags t
+JOIN photo_tags pt ON t.id = pt.tag_id
+JOIN photos p ON pt.photo_id = p.id
+WHERE p.created_dat >= DATE_SUB(CURRENT_DATE(), INTERVAL {time_range})
+GROUP BY t.id, t.tag_name
+ORDER BY count DESC
+LIMIT 7;
+
+# 9.2 Trending Tags Over Time
+# Purpose: Track the frequency of top tags used in photos over time
+WITH tag_counts AS (
+  SELECT 
+    DATE(p.created_dat) as date,
+    t.tag_name,
+    COUNT(pt.photo_id) as tag_count
+  FROM photos p
+  JOIN photo_tags pt ON p.id = pt.photo_id
+  JOIN tags t ON pt.tag_id = t.id
+  WHERE p.created_dat >= DATE_SUB(CURRENT_DATE(), INTERVAL {time_range})
+  GROUP BY DATE(p.created_dat), t.tag_name
+),
+top_tags AS (
+  SELECT tag_name
+  FROM tag_counts
+  GROUP BY tag_name
+  ORDER BY SUM(tag_count) DESC
+  LIMIT 3
+)
+SELECT tc.date, tc.tag_name, tc.tag_count
+FROM tag_counts tc
+JOIN top_tags tt ON tc.tag_name = tt.tag_name
+ORDER BY tc.date, tc.tag_count DESC;
+
+# 9.3 User Tag Preferences
+# Purpose: Analyze which users frequently use which tags
+SELECT 
+  u.username,
+  t.tag_name,
+  COUNT(pt.photo_id) as tag_count
+FROM users u
+JOIN photos p ON u.id = p.user_id
+JOIN photo_tags pt ON p.id = pt.photo_id
+JOIN tags t ON pt.tag_id = t.id
+WHERE p.created_dat >= DATE_SUB(CURRENT_DATE(), INTERVAL {time_range})
+GROUP BY u.id, u.username, t.id, t.tag_name
+HAVING COUNT(pt.photo_id) > 0
+ORDER BY u.username, tag_count DESC;

@@ -415,7 +415,7 @@ export default function SearchFiltersPage() {
                             <SelectValue placeholder="Select user" />
                           </SelectTrigger>
                           <SelectContent>
-                            {data.users.slice(0, 100).map((user) => (
+                            {data.users.map((user) => (
                               <SelectItem key={user.id} value={user.id}>
                                 {user.username}
                               </SelectItem>
@@ -463,7 +463,7 @@ export default function SearchFiltersPage() {
                             <SelectValue placeholder="Select user" />
                           </SelectTrigger>
                           <SelectContent>
-                            {data.users.slice(0, 100).map((user) => (
+                            {data.users.map((user) => (
                               <SelectItem key={user.id} value={user.id}>
                                 {user.username}
                               </SelectItem>
@@ -531,7 +531,7 @@ export default function SearchFiltersPage() {
                             <SelectValue placeholder="Select user" />
                           </SelectTrigger>
                           <SelectContent>
-                            {data.users.slice(0, 20).map((user) => (
+                            {data.users.map((user) => (
                               <SelectItem key={user.id} value={user.id}>
                                 {user.username}
                               </SelectItem>
@@ -602,13 +602,12 @@ ${
   '${filters.users.dateRange.to ? filters.users.dateRange.to.toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}'`
     : ""
 }
-ORDER BY created_at DESC
-LIMIT 100;`}
+ORDER BY created_at DESC;`}
                         />
                         <ScrollArea className="h-[500px]">
                           {searchResults.users.length > 0 ? (
                             <div className="grid gap-4">
-                              {searchResults.users.slice(0, 20).map((user) => (
+                              {searchResults.users.map((user) => (
                                 <div
                                   key={user.id}
                                   className="flex items-center p-4 border rounded-md hover:bg-muted/50 transition-colors"
@@ -678,13 +677,12 @@ ${
   )`
     : ""
 }
-ORDER BY p.created_dat DESC
-LIMIT 100;`}
+ORDER BY p.created_dat DESC;`}
                         />
                         <ScrollArea className="h-[500px]">
                           {searchResults.photos.length > 0 ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              {searchResults.photos.slice(0, 20).map((photo) => {
+                              {searchResults.photos.map((photo) => {
                                 const user = data.users.find((u) => u.id === photo.user_id)
                                 const photoTags = data.photoTags
                                   .filter((pt) => pt.photo_id === photo.id)
@@ -786,13 +784,12 @@ ${
   '${filters.comments.dateRange.to ? filters.comments.dateRange.to.toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}'`
     : ""
 }
-ORDER BY c.created_at DESC
-LIMIT 100;`}
+ORDER BY c.created_at DESC;`}
                         />
                         <ScrollArea className="h-[500px]">
                           {searchResults.comments.length > 0 ? (
                             <div className="grid gap-4">
-                              {searchResults.comments.slice(0, 20).map((comment) => {
+                              {searchResults.comments.map((comment) => {
                                 const user = data.users.find((u) => u.id === comment.user_id)
                                 const photo = data.photos.find((p) => p.id === comment.photo_id)
 
@@ -856,13 +853,12 @@ LEFT JOIN photo_tags pt ON t.id = pt.tag_id
 ${filters.tags.name ? `WHERE t.tag_name LIKE '%${filters.tags.name}%'` : ""}
 GROUP BY t.id, t.tag_name, t.created_at
 ${filters.tags.minPopularity > 0 ? `HAVING COUNT(pt.photo_id) >= ${filters.tags.minPopularity}` : ""}
-ORDER BY popularity DESC
-LIMIT 100;`}
+ORDER BY popularity DESC;`}
                         />
                         <ScrollArea className="h-[500px]">
                           {searchResults.tags.length > 0 ? (
                             <div className="grid gap-4">
-                              {searchResults.tags.slice(0, 20).map((tag) => {
+                              {searchResults.tags.map((tag) => {
                                 const popularity = data.photoTags.filter((pt) => pt.tag_id === tag.id).length
                                 const recentPhotos = data.photoTags
                                   .filter((pt) => pt.tag_id === tag.id)
@@ -926,13 +922,13 @@ LIMIT 100;`}
                           query={`${
                             filters.follows.relationship === "followers"
                               ? `SELECT f.follower_id, f.followee_id, f.created_at, 
-       u1.username as follower_username, u2.username as followee_username
+     u1.username as follower_username, u2.username as followee_username
 FROM follows f
 JOIN users u1 ON f.follower_id = u1.id
 JOIN users u2 ON f.followee_id = u2.id
 WHERE f.followee_id = '${filters.follows.userId}'`
                               : `SELECT f.follower_id, f.followee_id, f.created_at, 
-       u1.username as follower_username, u2.username as followee_username
+     u1.username as follower_username, u2.username as followee_username
 FROM follows f
 JOIN users u1 ON f.follower_id = u1.id
 JOIN users u2 ON f.followee_id = u2.id
@@ -945,13 +941,12 @@ ${
   '${filters.follows.dateRange.to ? filters.follows.dateRange.to.toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}'`
     : ""
 }
-ORDER BY f.created_at DESC
-LIMIT 100;`}
+ORDER BY f.created_at DESC;`}
                         />
                         <ScrollArea className="h-[500px]">
                           {searchResults.follows.length > 0 ? (
                             <div className="grid gap-4">
-                              {searchResults.follows.slice(0, 20).map((follow, i) => {
+                              {searchResults.follows.map((follow, i) => {
                                 const follower = data.users.find((u) => u.id === follow.follower_id)
                                 const followee = data.users.find((u) => u.id === follow.followee_id)
 

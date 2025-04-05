@@ -67,7 +67,7 @@ export default function HomePage() {
               </div>
               <div className="border dark:border-gray-700 rounded-md p-4">
                 <h3 className="font-bold mb-2 text-purple-600 dark:text-purple-400">Photos</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">id, image_url, user_id, created_at</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">id, image_url, user_id, created_dat</p>
               </div>
               <div className="border dark:border-gray-700 rounded-md p-4">
                 <h3 className="font-bold mb-2 text-purple-600 dark:text-purple-400">Photo Tags</h3>

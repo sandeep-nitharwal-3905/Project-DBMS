@@ -317,9 +317,9 @@ ORDER BY date;`}
                   <SqlQueryDisplay
                     title="SQL Query for Most Active Users"
                     query={`SELECT u.username,
-       COUNT(DISTINCT p.id) as posts,
-       COUNT(DISTINCT l.photo_id) as likes,
-       COUNT(DISTINCT c.id) as comments
+     COUNT(DISTINCT p.id) as posts,
+     COUNT(DISTINCT l.photo_id) as likes,
+     COUNT(DISTINCT c.id) as comments
 FROM users u
 LEFT JOIN photos p ON u.id = p.user_id
 LEFT JOIN likes l ON u.id = l.user_id
@@ -327,20 +327,37 @@ LEFT JOIN comments c ON u.id = c.user_id
 ${
   timeRange !== "all"
     ? `WHERE 
-  (p.created_dat >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-    timeRange === "7days" ? "7 DAY" : timeRange === "30days" ? "30 DAY" : timeRange === "90days" ? "90 DAY" : "1 YEAR"
-  }) OR p.id IS NULL)
-  AND (l.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-    timeRange === "7days" ? "7 DAY" : timeRange === "30days" ? "30 DAY" : timeRange === "90days" ? "90 DAY" : "1 YEAR"
-  }) OR l.photo_id IS NULL)
-  AND (c.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-    timeRange === "7days" ? "7 DAY" : timeRange === "30days" ? "30 DAY" : timeRange === "90days" ? "90 DAY" : "1 YEAR"
-  }) OR c.id IS NULL)`
+(p.created_dat >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
+        timeRange === "7days"
+          ? "7 DAY"
+          : timeRange === "30days"
+            ? "30 DAY"
+            : timeRange === "90days"
+              ? "90 DAY"
+              : "1 YEAR"
+      }) OR p.id IS NULL)
+AND (l.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
+        timeRange === "7days"
+          ? "7 DAY"
+          : timeRange === "30days"
+            ? "30 DAY"
+            : timeRange === "90days"
+              ? "90 DAY"
+              : "1 YEAR"
+      }) OR l.photo_id IS NULL)
+AND (c.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
+        timeRange === "7days"
+          ? "7 DAY"
+          : timeRange === "30days"
+            ? "30 DAY"
+            : timeRange === "90days"
+              ? "90 DAY"
+              : "1 YEAR"
+      }) OR c.id IS NULL)`
     : ""
 }
 GROUP BY u.id, u.username
-ORDER BY (COUNT(DISTINCT p.id) + COUNT(DISTINCT l.photo_id) + COUNT(DISTINCT c.id)) DESC
-LIMIT 5;`}
+ORDER BY (COUNT(DISTINCT p.id) + COUNT(DISTINCT l.photo_id) + COUNT(DISTINCT c.id)) DESC;`}
                   />
                   <Card>
                     <CardHeader>
@@ -367,7 +384,7 @@ LIMIT 5;`}
                         >
                           <ResponsiveContainer width="100%" height={300}>
                             <BarChart
-                              data={chartData.mostActiveUsers.slice(0, 5)}
+                              data={chartData.mostActiveUsers}
                               margin={{ top: 5, right: 10, left: 10, bottom: 20 }}
                               barGap={4}
                             >
@@ -509,8 +526,7 @@ ${
     : ""
 }
 GROUP BY p.id, u.username
-ORDER BY likes DESC
-LIMIT 5;`}
+ORDER BY likes DESC;`}
                   />
                   <Card>
                     <CardHeader>
@@ -529,7 +545,7 @@ LIMIT 5;`}
                         >
                           <ResponsiveContainer width="100%" height={300}>
                             <BarChart
-                              data={chartData.topLikedPhotos.slice(0, 5)}
+                              data={chartData.topLikedPhotos}
                               margin={{ top: 5, right: 10, left: 10, bottom: 20 }}
                               layout="vertical"
                             >
@@ -583,8 +599,7 @@ ${
     : ""
 }
 GROUP BY p.id, u.username
-ORDER BY comments DESC
-LIMIT 5;`}
+ORDER BY comments DESC;`}
                   />
                   <Card>
                     <CardHeader>
@@ -603,7 +618,7 @@ LIMIT 5;`}
                         >
                           <ResponsiveContainer width="100%" height={300}>
                             <BarChart
-                              data={chartData.topCommentedPhotos.slice(0, 5)}
+                              data={chartData.topCommentedPhotos}
                               margin={{ top: 5, right: 10, left: 10, bottom: 20 }}
                               layout="vertical"
                             >
@@ -640,8 +655,8 @@ LIMIT 5;`}
                   <SqlQueryDisplay
                     title="SQL Query for Most Engaging Users"
                     query={`SELECT u.username,
-       COUNT(l.photo_id) as likes,
-       COUNT(c.id) as comments
+     COUNT(l.photo_id) as likes,
+     COUNT(c.id) as comments
 FROM users u
 JOIN photos p ON u.id = p.user_id
 LEFT JOIN likes l ON p.id = l.photo_id
@@ -649,17 +664,28 @@ LEFT JOIN comments c ON p.id = c.photo_id
 ${
   timeRange !== "all"
     ? `WHERE 
-  (l.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-    timeRange === "7days" ? "7 DAY" : timeRange === "30days" ? "30 DAY" : timeRange === "90days" ? "90 DAY" : "1 YEAR"
-  }) OR l.photo_id IS NULL)
-  AND (c.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-    timeRange === "7days" ? "7 DAY" : timeRange === "30days" ? "30 DAY" : timeRange === "90days" ? "90 DAY" : "1 YEAR"
-  }) OR c.id IS NULL)`
+(l.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
+        timeRange === "7days"
+          ? "7 DAY"
+          : timeRange === "30days"
+            ? "30 DAY"
+            : timeRange === "90days"
+              ? "90 DAY"
+              : "1 YEAR"
+      }) OR l.photo_id IS NULL)
+AND (c.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
+        timeRange === "7days"
+          ? "7 DAY"
+          : timeRange === "30days"
+            ? "30 DAY"
+            : timeRange === "90days"
+              ? "90 DAY"
+              : "1 YEAR"
+      }) OR c.id IS NULL)`
     : ""
 }
 GROUP BY u.id, u.username
-ORDER BY (COUNT(l.photo_id) + COUNT(c.id)) DESC
-LIMIT 5;`}
+ORDER BY (COUNT(l.photo_id) + COUNT(c.id)) DESC;`}
                   />
                   <Card>
                     <CardHeader>
@@ -682,7 +708,7 @@ LIMIT 5;`}
                         >
                           <ResponsiveContainer width="100%" height={300}>
                             <BarChart
-                              data={chartData.mostEngagingUsers.slice(0, 5)}
+                              data={chartData.mostEngagingUsers}
                               margin={{ top: 5, right: 10, left: 10, bottom: 20 }}
                               barGap={4}
                             >
@@ -822,8 +848,7 @@ ${
     : ""
 }
 GROUP BY u.id, u.username
-ORDER BY followers DESC
-LIMIT 5;`}
+ORDER BY followers DESC;`}
                   />
                   <Card>
                     <CardHeader>
@@ -842,7 +867,7 @@ LIMIT 5;`}
                         >
                           <ResponsiveContainer width="100%" height={300}>
                             <BarChart
-                              data={chartData.mostFollowedUsers.slice(0, 5)}
+                              data={chartData.mostFollowedUsers}
                               margin={{ top: 5, right: 10, left: 10, bottom: 20 }}
                             >
                               <XAxis
@@ -899,8 +924,7 @@ ${
     : ""
 }
 GROUP BY t.id, t.tag_name
-ORDER BY count DESC
-LIMIT 7;`}
+ORDER BY count DESC;`}
                   />
                   <Card>
                     <CardHeader>
@@ -912,7 +936,7 @@ LIMIT 7;`}
                         <ResponsiveContainer width="100%" height={300}>
                           <RechartsPieChart>
                             <Pie
-                              data={chartData.mostUsedTags.slice(0, 7)}
+                              data={chartData.mostUsedTags}
                               cx="50%"
                               cy="50%"
                               labelLine={false}
@@ -922,7 +946,7 @@ LIMIT 7;`}
                               nameKey="name"
                               label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                             >
-                              {chartData.mostUsedTags.slice(0, 7).map((entry, index) => (
+                              {chartData.mostUsedTags.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                               ))}
                             </Pie>
@@ -1094,7 +1118,7 @@ ORDER BY u.username, tag_count DESC;`}
                                 </div>
                               ))}
 
-                            {chartData.userTagPreferences.slice(0, 10).map((user, i) => (
+                            {chartData.userTagPreferences.map((user, i) => (
                               <React.Fragment key={i}>
                                 <div className="font-medium p-2 truncate" title={user.username}>
                                   {user.username}

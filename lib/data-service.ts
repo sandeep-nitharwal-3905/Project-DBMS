@@ -1,4 +1,14 @@
 // Data service for fetching and processing CSV data
+import {
+  validateUser,
+  validateTag,
+  validatePhoto,
+  validatePhotoTag,
+  validateLike,
+  validateFollow,
+  validateComment,
+  validateRecords,
+} from "./csv-validator"
 
 export interface User {
   id: string
@@ -45,7 +55,7 @@ export interface Comment {
 }
 
 // Function to fetch and parse CSV data
-async function fetchCSV<T>(url: string): Promise<T[]> {
+async function fetchCSV<T>(url: string, validator: (record: Partial<T>) => T | null): Promise<T[]> {
   try {
     const response = await fetch(url)
     if (!response.ok) {
@@ -53,7 +63,10 @@ async function fetchCSV<T>(url: string): Promise<T[]> {
     }
 
     const csvText = await response.text()
-    return parseCSV<T>(csvText)
+    const parsedData = parseCSV<T>(csvText)
+
+    // Validate and clean the data
+    return validateRecords(parsedData, validator)
   } catch (error) {
     console.error("Error fetching CSV:", error)
     return []
@@ -61,7 +74,7 @@ async function fetchCSV<T>(url: string): Promise<T[]> {
 }
 
 // Parse CSV text to array of objects
-function parseCSV<T>(csvText: string): T[] {
+function parseCSV<T>(csvText: string): Partial<T>[] {
   const lines = csvText.trim().split("\n")
   if (lines.length <= 1) return []
 
@@ -75,12 +88,13 @@ function parseCSV<T>(csvText: string): T[] {
       obj[header] = values[index] || ""
     })
 
-    return obj as unknown as T
+    return obj as unknown as Partial<T>
   })
 }
 
 // Fetch all data sources
 export async function fetchAllData() {
+  // Use remote URLs for data sources
   const usersUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/users-gfWSXPT54zsAHIPV9J5s8tJ64CQEXM.csv"
   const tagsUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/tags-RWekJmNrhrazo2C88eqFBMsrGQ6m92.csv"
   const followsUrl =
@@ -93,13 +107,13 @@ export async function fetchAllData() {
   const likesUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/likes-cQiKO7rxzi00UbnkSLLImUNfH8HTc3.csv"
 
   const [users, tags, follows, photoTags, photos, comments, likes] = await Promise.all([
-    fetchCSV<User>(usersUrl),
-    fetchCSV<Tag>(tagsUrl),
-    fetchCSV<Follow>(followsUrl),
-    fetchCSV<PhotoTag>(photoTagsUrl),
-    fetchCSV<Photo>(photosUrl),
-    fetchCSV<Comment>(commentsUrl),
-    fetchCSV<Like>(likesUrl),
+    fetchCSV<User>(usersUrl, validateUser),
+    fetchCSV<Tag>(tagsUrl, validateTag),
+    fetchCSV<Follow>(followsUrl, validateFollow),
+    fetchCSV<PhotoTag>(photoTagsUrl, validatePhotoTag),
+    fetchCSV<Photo>(photosUrl, validatePhoto),
+    fetchCSV<Comment>(commentsUrl, validateComment),
+    fetchCSV<Like>(likesUrl, validateLike),
   ])
 
   return {
@@ -125,10 +139,15 @@ export function searchUsersByDateRange(users: User[], startDate?: Date, endDate?
   if (!startDate && !endDate) return users
 
   return users.filter((user) => {
-    const userDate = new Date(user.created_at)
-    if (startDate && userDate < startDate) return false
-    if (endDate && userDate > endDate) return false
-    return true
+    try {
+      const userDate = new Date(user.created_at)
+      if (isNaN(userDate.getTime())) return false
+      if (startDate && userDate < startDate) return false
+      if (endDate && userDate > endDate) return false
+      return true
+    } catch (e) {
+      return false
+    }
   })
 }
 
@@ -143,10 +162,15 @@ export function searchPhotosByDateRange(photos: Photo[], startDate?: Date, endDa
   if (!startDate && !endDate) return photos
 
   return photos.filter((photo) => {
-    const photoDate = new Date(photo.created_dat)
-    if (startDate && photoDate < startDate) return false
-    if (endDate && photoDate > endDate) return false
-    return true
+    try {
+      const photoDate = new Date(photo.created_dat)
+      if (isNaN(photoDate.getTime())) return false
+      if (startDate && photoDate < startDate) return false
+      if (endDate && photoDate > endDate) return false
+      return true
+    } catch (e) {
+      return false
+    }
   })
 }
 
@@ -203,10 +227,15 @@ export function searchCommentsByDateRange(comments: Comment[], startDate?: Date,
   if (!startDate && !endDate) return comments
 
   return comments.filter((comment) => {
-    const commentDate = new Date(comment.created_at)
-    if (startDate && commentDate < startDate) return false
-    if (endDate && commentDate > endDate) return false
-    return true
+    try {
+      const commentDate = new Date(comment.created_at)
+      if (isNaN(commentDate.getTime())) return false
+      if (startDate && commentDate < startDate) return false
+      if (endDate && commentDate > endDate) return false
+      return true
+    } catch (e) {
+      return false
+    }
   })
 }
 
@@ -249,10 +278,15 @@ export function getFollowersInDateRange(follows: Follow[], startDate?: Date, end
   if (!startDate && !endDate) return follows
 
   return follows.filter((follow) => {
-    const followDate = new Date(follow.created_at)
-    if (startDate && followDate < startDate) return false
-    if (endDate && followDate > endDate) return false
-    return true
+    try {
+      const followDate = new Date(follow.created_at)
+      if (isNaN(followDate.getTime())) return false
+      if (startDate && followDate < startDate) return false
+      if (endDate && followDate > endDate) return false
+      return true
+    } catch (e) {
+      return false
+    }
   })
 }
 
@@ -282,8 +316,15 @@ export function getNewUsersOverTime(users: User[]): { date: string; count: numbe
   const usersByDate: Record<string, number> = {}
 
   users.forEach((user) => {
-    const date = user.created_at.split(" ")[0] // Extract date part
-    usersByDate[date] = (usersByDate[date] || 0) + 1
+    try {
+      const date = new Date(user.created_at)
+      if (isNaN(date.getTime())) return
+
+      const dateStr = date.toISOString().split("T")[0] // Extract date part
+      usersByDate[dateStr] = (usersByDate[dateStr] || 0) + 1
+    } catch (e) {
+      // Skip invalid dates
+    }
   })
 
   // Convert to array and sort by date
@@ -333,13 +374,12 @@ export function getMostActiveUsers(
   })
 
   // Convert to array, sort by total activity
-  return Object.values(userActivity)
-    .sort((a, b) => {
-      const totalA = a.posts + a.likes + a.comments
-      const totalB = b.posts + b.likes + b.comments
-      return totalB - totalA
-    })
-    .slice(0, 10) // Top 10 most active users
+  return Object.values(userActivity).sort((a, b) => {
+    const totalA = a.posts + a.likes + a.comments
+    const totalB = b.posts + b.likes + b.comments
+    return totalB - totalA
+  })
+  // Return all active users
 }
 
 // Get photo likes trend over time
@@ -348,8 +388,15 @@ export function getPhotoLikesTrend(likes: Like[]): { date: string; count: number
   const likesByDate: Record<string, number> = {}
 
   likes.forEach((like) => {
-    const date = like.created_at.split(" ")[0] // Extract date part
-    likesByDate[date] = (likesByDate[date] || 0) + 1
+    try {
+      const date = new Date(like.created_at)
+      if (isNaN(date.getTime())) return
+
+      const dateStr = date.toISOString().split("T")[0] // Extract date part
+      likesByDate[dateStr] = (likesByDate[dateStr] || 0) + 1
+    } catch (e) {
+      // Skip invalid dates
+    }
   })
 
   // Convert to array and sort by date
@@ -385,7 +432,7 @@ export function getTopLikedPhotos(
       likes: likeCounts[photo.id] || 0,
     }))
     .sort((a, b) => b.likes - a.likes)
-    .slice(0, 10) // Top 10 liked photos
+  // Return all liked photos
 }
 
 // Get top commented photos
@@ -415,7 +462,7 @@ export function getTopCommentedPhotos(
       comments: commentCounts[photo.id] || 0,
     }))
     .sort((a, b) => b.comments - a.comments)
-    .slice(0, 10) // Top 10 commented photos
+  // Return all commented photos
 }
 
 // Get most engaging users (total likes + comments received)
@@ -467,7 +514,7 @@ export function getMostEngagingUsers(
       const totalB = b.likes + b.comments
       return totalB - totalA
     })
-    .slice(0, 10) // Top 10 most engaging users
+  // Return all engaging users
 }
 
 // Get follower growth over time
@@ -476,8 +523,15 @@ export function getFollowerGrowthOverTime(follows: Follow[]): { date: string; co
   const followsByDate: Record<string, number> = {}
 
   follows.forEach((follow) => {
-    const date = follow.created_at.split(" ")[0] // Extract date part
-    followsByDate[date] = (followsByDate[date] || 0) + 1
+    try {
+      const date = new Date(follow.created_at)
+      if (isNaN(date.getTime())) return
+
+      const dateStr = date.toISOString().split("T")[0] // Extract date part
+      followsByDate[dateStr] = (followsByDate[dateStr] || 0) + 1
+    } catch (e) {
+      // Skip invalid dates
+    }
   })
 
   // Convert to array and sort by date
@@ -502,7 +556,7 @@ export function getMostFollowedUsers(users: User[], follows: Follow[]): { userna
       followers: followerCounts[user.id] || 0,
     }))
     .sort((a, b) => b.followers - a.followers)
-    .slice(0, 10) // Top 10 most followed users
+  // Return all followed users
 }
 
 // Get trending tags over time
@@ -514,7 +568,14 @@ export function getTrendingTagsOverTime(
   // Create a map of photo IDs to their creation dates
   const photoDateMap: Record<string, string> = {}
   photos.forEach((photo) => {
-    photoDateMap[photo.id] = photo.created_dat.split(" ")[0] // Extract date part
+    try {
+      const date = new Date(photo.created_dat)
+      if (isNaN(date.getTime())) return
+
+      photoDateMap[photo.id] = date.toISOString().split("T")[0] // Extract date part
+    } catch (e) {
+      // Skip invalid dates
+    }
   })
 
   // Create a map of tag IDs to tag names
@@ -561,7 +622,7 @@ export function getMostUsedTags(tags: Tag[], photoTags: PhotoTag[]): { name: str
       count: tagCounts[tag.id] || 0,
     }))
     .sort((a, b) => b.count - a.count)
-    .slice(0, 20) // Top 20 most used tags
+  // Return all tags
 }
 
 // Get user preferences based on tags
@@ -613,6 +674,6 @@ export function getUserPreferencesByTags(
       const totalB = Object.values(b.tagPreferences).reduce((sum, count) => sum + (count as number), 0)
       return totalB - totalA
     })
-    .slice(0, 10) // Top 10 users with most tag usage
+  // Return all users with tag preferences
 }
 

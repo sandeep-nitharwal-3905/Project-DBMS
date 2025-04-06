@@ -14,7 +14,6 @@ import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { DatePickerWithRange } from "@/components/date-range-picker"
 import {
   fetchAllData,
   type User,
@@ -42,6 +41,7 @@ import {
 
 // Add import for the SQL query display component
 import { SqlQueryDisplay } from "@/components/sql-query-display"
+import { EnhancedDateRangePicker } from "@/components/enhanced-date-range-picker"
 
 interface FilterState {
   users: {
@@ -397,7 +397,7 @@ export default function SearchFiltersPage() {
                       </div>
                       <div>
                         <label className="text-sm font-medium mb-1 block">Account Creation Date</label>
-                        <DatePickerWithRange
+                        <EnhancedDateRangePicker
                           dateRange={filters.users.dateRange}
                           onDateRangeChange={(range) => updateFilter("users", "dateRange", range)}
                         />
@@ -425,7 +425,7 @@ export default function SearchFiltersPage() {
                       </div>
                       <div>
                         <label className="text-sm font-medium mb-1 block">Upload Date</label>
-                        <DatePickerWithRange
+                        <EnhancedDateRangePicker
                           dateRange={filters.photos.dateRange}
                           onDateRangeChange={(range) => updateFilter("photos", "dateRange", range)}
                         />
@@ -490,7 +490,7 @@ export default function SearchFiltersPage() {
                       </div>
                       <div>
                         <label className="text-sm font-medium mb-1 block">Comment Date</label>
-                        <DatePickerWithRange
+                        <EnhancedDateRangePicker
                           dateRange={filters.comments.dateRange}
                           onDateRangeChange={(range) => updateFilter("comments", "dateRange", range)}
                         />
@@ -556,7 +556,7 @@ export default function SearchFiltersPage() {
                       </div>
                       <div>
                         <label className="text-sm font-medium mb-1 block">Follow Date</label>
-                        <DatePickerWithRange
+                        <EnhancedDateRangePicker
                           dateRange={filters.follows.dateRange}
                           onDateRangeChange={(range) => updateFilter("follows", "dateRange", range)}
                         />

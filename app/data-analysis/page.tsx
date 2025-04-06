@@ -3,13 +3,13 @@
 import React from "react"
 
 import { useState, useEffect, useCallback } from "react"
-import { ArrowLeft, BarChart3, LineChartIcon, PieChart, TrendingUp, Loader2 } from "lucide-react"
+import { ArrowLeft, BarChart3, LineChartIcon, PieChart, TrendingUp, Loader2, Filter } from "lucide-react"
 import Link from "next/link"
+import type { DateRange } from "react-day-picker"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import {
   Bar,
@@ -44,10 +44,15 @@ import {
 // Import components
 import { SqlQueryDisplay } from "@/components/sql-query-display"
 import { ResponsiveChartContainer } from "@/components/responsive-chart-container"
+import { EnhancedDateRangePicker } from "@/components/enhanced-date-range-picker"
+import { DataLimitControl } from "@/components/data-limit-control"
+import { Badge } from "@/components/ui/badge"
 
 export default function DataAnalysisPage() {
   const [loading, setLoading] = useState(true)
-  const [timeRange, setTimeRange] = useState("all")
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
+  const [dataLimit, setDataLimit] = useState<number>(10)
+  const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [chartData, setChartData] = useState({
     newUsersOverTime: [],
     mostActiveUsers: [],
@@ -104,37 +109,79 @@ export default function DataAnalysisPage() {
     loadData()
   }, [])
 
-  // Filter data based on time range
-  const filterDataByTimeRange = useCallback(
+  // Handle date range change
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    setDateRange(range)
+    updateActiveFilters(range)
+  }
+
+  // Update active filters
+  const updateActiveFilters = (range: DateRange | undefined) => {
+    // Remove any existing date filter
+    const updatedFilters = activeFilters.filter((filter) => !filter.startsWith("Date:"))
+
+    // Add new date filter if range exists
+    if (range?.from) {
+      const fromDate = format(range.from, "MMM dd, yyyy")
+      const toDate = range.to ? format(range.to, "MMM dd, yyyy") : "present"
+      updatedFilters.push(`Date: ${fromDate} to ${toDate}`)
+    }
+
+    setActiveFilters(updatedFilters)
+  }
+
+  // Handle data limit change
+  const handleDataLimitChange = (limit: number) => {
+    setDataLimit(limit)
+
+    // Update active filters
+    const updatedFilters = activeFilters.filter((filter) => !filter.startsWith("Limit:"))
+    if (limit > 0) {
+      updatedFilters.push(`Limit: Top ${limit}`)
+    }
+    setActiveFilters(updatedFilters)
+  }
+
+  // Clear all filters
+  const clearFilters = () => {
+    setDateRange(undefined)
+    setDataLimit(10)
+    setActiveFilters([])
+  }
+
+  // Remove specific filter
+  const removeFilter = (filter: string) => {
+    if (filter.startsWith("Date:")) {
+      setDateRange(undefined)
+    } else if (filter.startsWith("Limit:")) {
+      setDataLimit(10)
+    }
+
+    setActiveFilters(activeFilters.filter((f) => f !== filter))
+  }
+
+  // Filter data based on date range
+  const filterDataByDateRange = useCallback(
     (data, dateKey = "date") => {
-      if (!data || data.length === 0 || timeRange === "all") return data
-
-      const now = new Date()
-      const cutoffDate = new Date()
-
-      switch (timeRange) {
-        case "7days":
-          cutoffDate.setDate(now.getDate() - 7)
-          break
-        case "30days":
-          cutoffDate.setDate(now.getDate() - 30)
-          break
-        case "90days":
-          cutoffDate.setDate(now.getDate() - 90)
-          break
-        case "1year":
-          cutoffDate.setFullYear(now.getFullYear() - 1)
-          break
-        default:
-          return data
-      }
+      if (!data || data.length === 0 || !dateRange?.from) return data
 
       return data.filter((item) => {
         const itemDate = new Date(item[dateKey])
-        return itemDate >= cutoffDate
+        if (dateRange.from && itemDate < dateRange.from) return false
+        if (dateRange.to && itemDate > dateRange.to) return false
+        return true
       })
     },
-    [timeRange],
+    [dateRange],
+  )
+
+  // Apply data limit to array
+  const applyDataLimit = useCallback(
+    (data) => {
+      if (!data || data.length === 0 || dataLimit === 0) return data
+      return data.slice(0, dataLimit)
+    },
+    [dataLimit],
   )
 
   // Format trending tags data for chart
@@ -176,10 +223,34 @@ export default function DataAnalysisPage() {
 
   const COLORS = ["#8884d8", "#83a6ed", "#8dd1e1", "#82ca9d", "#a4de6c", "#d0ed57", "#ffc658"]
 
+  // Helper function to format dates
+  const format = (date: Date, formatStr: string) => {
+    const options: Intl.DateTimeFormatOptions = {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }
+    return date.toLocaleDateString("en-US", options)
+  }
+
+  // Generate SQL date filter based on current date range
+  const getSqlDateFilter = useCallback(() => {
+    if (!dateRange?.from) return ""
+
+    const fromDate = dateRange.from.toISOString().split("T")[0]
+    const toDate = dateRange.to ? dateRange.to.toISOString().split("T")[0] : new Date().toISOString().split("T")[0]
+    return `BETWEEN '${fromDate}' AND '${toDate}'`
+  }, [dateRange])
+
+  // Generate SQL limit clause
+  const getSqlLimitClause = useCallback(() => {
+    return dataLimit > 0 ? `LIMIT ${dataLimit}` : ""
+  }, [dataLimit])
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <Link href="/" className="mr-4">
               <Button variant="ghost" size="icon">
@@ -188,19 +259,62 @@ export default function DataAnalysisPage() {
             </Link>
             <h1 className="text-3xl font-bold">Data Analysis</h1>
           </div>
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select time range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7days">Last 7 days</SelectItem>
-              <SelectItem value="30days">Last 30 days</SelectItem>
-              <SelectItem value="90days">Last 90 days</SelectItem>
-              <SelectItem value="1year">Last year</SelectItem>
-              <SelectItem value="all">All time</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
+
+        {/* Filters Card */}
+        <Card className="mb-8">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center">
+              <Filter className="mr-2 h-5 w-5" />
+              Data Filters
+            </CardTitle>
+            {activeFilters.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {activeFilters.map((filter) => (
+                  <Badge key={filter} variant="secondary" className="flex items-center gap-1">
+                    {filter}
+                    <button onClick={() => removeFilter(filter)} className="ml-1 hover:text-destructive">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </Badge>
+                ))}
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6">
+                  Clear all
+                </Button>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-sm font-medium mb-2">Date Range</h3>
+                <EnhancedDateRangePicker dateRange={dateRange} onDateRangeChange={handleDateRangeChange} />
+              </div>
+
+              <div>
+                <DataLimitControl
+                  limit={dataLimit}
+                  onLimitChange={handleDataLimitChange}
+                  options={[5, 10, 20, 50, 100]}
+                  label="Data Limit"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {loading ? (
           <div className="flex items-center justify-center h-64">
@@ -236,19 +350,7 @@ export default function DataAnalysisPage() {
                     title="SQL Query for New Users Over Time"
                     query={`SELECT DATE(created_at) as date, COUNT(*) as count
 FROM users
-${
-  timeRange !== "all"
-    ? `WHERE created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-        timeRange === "7days"
-          ? "7 DAY"
-          : timeRange === "30days"
-            ? "30 DAY"
-            : timeRange === "90days"
-              ? "90 DAY"
-              : "1 YEAR"
-      })`
-    : ""
-}
+${dateRange?.from ? `WHERE created_at ${getSqlDateFilter()}` : ""}
 GROUP BY DATE(created_at)
 ORDER BY date;`}
                   />
@@ -261,7 +363,7 @@ ORDER BY date;`}
                       <ResponsiveChartContainer
                         yAxisInteger={true}
                         minDomain={0}
-                        maxDomain={getMaxValue(filterDataByTimeRange(chartData.newUsersOverTime), "count")}
+                        maxDomain={getMaxValue(filterDataByDateRange(chartData.newUsersOverTime), "count")}
                       >
                         <ChartContainer
                           config={{
@@ -273,7 +375,7 @@ ORDER BY date;`}
                         >
                           <ResponsiveContainer width="100%" height={300}>
                             <LineChart
-                              data={filterDataByTimeRange(chartData.newUsersOverTime)}
+                              data={filterDataByDateRange(chartData.newUsersOverTime)}
                               margin={{ top: 5, right: 10, left: 10, bottom: 0 }}
                             >
                               <XAxis
@@ -325,39 +427,16 @@ LEFT JOIN photos p ON u.id = p.user_id
 LEFT JOIN likes l ON u.id = l.user_id
 LEFT JOIN comments c ON u.id = c.user_id
 ${
-  timeRange !== "all"
+  dateRange?.from
     ? `WHERE 
-(p.created_dat >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-        timeRange === "7days"
-          ? "7 DAY"
-          : timeRange === "30days"
-            ? "30 DAY"
-            : timeRange === "90days"
-              ? "90 DAY"
-              : "1 YEAR"
-      }) OR p.id IS NULL)
-AND (l.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-        timeRange === "7days"
-          ? "7 DAY"
-          : timeRange === "30days"
-            ? "30 DAY"
-            : timeRange === "90days"
-              ? "90 DAY"
-              : "1 YEAR"
-      }) OR l.photo_id IS NULL)
-AND (c.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-        timeRange === "7days"
-          ? "7 DAY"
-          : timeRange === "30days"
-            ? "30 DAY"
-            : timeRange === "90days"
-              ? "90 DAY"
-              : "1 YEAR"
-      }) OR c.id IS NULL)`
+(p.created_dat ${getSqlDateFilter()} OR p.id IS NULL)
+AND (l.created_at ${getSqlDateFilter()} OR l.photo_id IS NULL)
+AND (c.created_at ${getSqlDateFilter()} OR c.id IS NULL)`
     : ""
 }
 GROUP BY u.id, u.username
-ORDER BY (COUNT(DISTINCT p.id) + COUNT(DISTINCT l.photo_id) + COUNT(DISTINCT c.id)) DESC;`}
+ORDER BY (COUNT(DISTINCT p.id) + COUNT(DISTINCT l.photo_id) + COUNT(DISTINCT c.id)) DESC
+${getSqlLimitClause()};`}
                   />
                   <Card>
                     <CardHeader>
@@ -384,7 +463,7 @@ ORDER BY (COUNT(DISTINCT p.id) + COUNT(DISTINCT l.photo_id) + COUNT(DISTINCT c.i
                         >
                           <ResponsiveContainer width="100%" height={300}>
                             <BarChart
-                              data={chartData.mostActiveUsers}
+                              data={applyDataLimit(chartData.mostActiveUsers)}
                               margin={{ top: 5, right: 10, left: 10, bottom: 20 }}
                               barGap={4}
                             >
@@ -428,19 +507,7 @@ ORDER BY (COUNT(DISTINCT p.id) + COUNT(DISTINCT l.photo_id) + COUNT(DISTINCT c.i
                     title="SQL Query for Photo Likes Trend"
                     query={`SELECT DATE(created_at) as date, COUNT(*) as count
 FROM likes
-${
-  timeRange !== "all"
-    ? `WHERE created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-        timeRange === "7days"
-          ? "7 DAY"
-          : timeRange === "30days"
-            ? "30 DAY"
-            : timeRange === "90days"
-              ? "90 DAY"
-              : "1 YEAR"
-      })`
-    : ""
-}
+${dateRange?.from ? `WHERE created_at ${getSqlDateFilter()}` : ""}
 GROUP BY DATE(created_at)
 ORDER BY date;`}
                   />
@@ -453,7 +520,7 @@ ORDER BY date;`}
                       <ResponsiveChartContainer
                         yAxisInteger={true}
                         minDomain={0}
-                        maxDomain={getMaxValue(filterDataByTimeRange(chartData.photoLikesTrend), "count")}
+                        maxDomain={getMaxValue(filterDataByDateRange(chartData.photoLikesTrend), "count")}
                       >
                         <ChartContainer
                           config={{
@@ -465,7 +532,7 @@ ORDER BY date;`}
                         >
                           <ResponsiveContainer width="100%" height={300}>
                             <LineChart
-                              data={filterDataByTimeRange(chartData.photoLikesTrend)}
+                              data={filterDataByDateRange(chartData.photoLikesTrend)}
                               margin={{ top: 5, right: 10, left: 10, bottom: 0 }}
                             >
                               <XAxis
@@ -512,21 +579,10 @@ ORDER BY date;`}
 FROM photos p
 JOIN users u ON p.user_id = u.id
 JOIN likes l ON p.id = l.photo_id
-${
-  timeRange !== "all"
-    ? `WHERE l.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-        timeRange === "7days"
-          ? "7 DAY"
-          : timeRange === "30days"
-            ? "30 DAY"
-            : timeRange === "90days"
-              ? "90 DAY"
-              : "1 YEAR"
-      })`
-    : ""
-}
+${dateRange?.from ? `WHERE l.created_at ${getSqlDateFilter()}` : ""}
 GROUP BY p.id, u.username
-ORDER BY likes DESC;`}
+ORDER BY likes DESC
+${getSqlLimitClause()};`}
                   />
                   <Card>
                     <CardHeader>
@@ -545,7 +601,7 @@ ORDER BY likes DESC;`}
                         >
                           <ResponsiveContainer width="100%" height={300}>
                             <BarChart
-                              data={chartData.topLikedPhotos}
+                              data={applyDataLimit(chartData.topLikedPhotos)}
                               margin={{ top: 5, right: 10, left: 10, bottom: 20 }}
                               layout="vertical"
                             >
@@ -585,21 +641,10 @@ ORDER BY likes DESC;`}
 FROM photos p
 JOIN users u ON p.user_id = u.id
 JOIN comments c ON p.id = c.photo_id
-${
-  timeRange !== "all"
-    ? `WHERE c.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-        timeRange === "7days"
-          ? "7 DAY"
-          : timeRange === "30days"
-            ? "30 DAY"
-            : timeRange === "90days"
-              ? "90 DAY"
-              : "1 YEAR"
-      })`
-    : ""
-}
+${dateRange?.from ? `WHERE c.created_at ${getSqlDateFilter()}` : ""}
 GROUP BY p.id, u.username
-ORDER BY comments DESC;`}
+ORDER BY comments DESC
+${getSqlLimitClause()};`}
                   />
                   <Card>
                     <CardHeader>
@@ -618,7 +663,7 @@ ORDER BY comments DESC;`}
                         >
                           <ResponsiveContainer width="100%" height={300}>
                             <BarChart
-                              data={chartData.topCommentedPhotos}
+                              data={applyDataLimit(chartData.topCommentedPhotos)}
                               margin={{ top: 5, right: 10, left: 10, bottom: 20 }}
                               layout="vertical"
                             >
@@ -662,30 +707,15 @@ JOIN photos p ON u.id = p.user_id
 LEFT JOIN likes l ON p.id = l.photo_id
 LEFT JOIN comments c ON p.id = c.photo_id
 ${
-  timeRange !== "all"
+  dateRange?.from
     ? `WHERE 
-(l.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-        timeRange === "7days"
-          ? "7 DAY"
-          : timeRange === "30days"
-            ? "30 DAY"
-            : timeRange === "90days"
-              ? "90 DAY"
-              : "1 YEAR"
-      }) OR l.photo_id IS NULL)
-AND (c.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-        timeRange === "7days"
-          ? "7 DAY"
-          : timeRange === "30days"
-            ? "30 DAY"
-            : timeRange === "90days"
-              ? "90 DAY"
-              : "1 YEAR"
-      }) OR c.id IS NULL)`
+(l.created_at ${getSqlDateFilter()} OR l.photo_id IS NULL)
+AND (c.created_at ${getSqlDateFilter()} OR c.id IS NULL)`
     : ""
 }
 GROUP BY u.id, u.username
-ORDER BY (COUNT(l.photo_id) + COUNT(c.id)) DESC;`}
+ORDER BY (COUNT(l.photo_id) + COUNT(c.id)) DESC
+${getSqlLimitClause()};`}
                   />
                   <Card>
                     <CardHeader>
@@ -708,7 +738,7 @@ ORDER BY (COUNT(l.photo_id) + COUNT(c.id)) DESC;`}
                         >
                           <ResponsiveContainer width="100%" height={300}>
                             <BarChart
-                              data={chartData.mostEngagingUsers}
+                              data={applyDataLimit(chartData.mostEngagingUsers)}
                               margin={{ top: 5, right: 10, left: 10, bottom: 20 }}
                               barGap={4}
                             >
@@ -751,19 +781,7 @@ ORDER BY (COUNT(l.photo_id) + COUNT(c.id)) DESC;`}
                     title="SQL Query for Follower Growth Over Time"
                     query={`SELECT DATE(created_at) as date, COUNT(*) as count
 FROM follows
-${
-  timeRange !== "all"
-    ? `WHERE created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-        timeRange === "7days"
-          ? "7 DAY"
-          : timeRange === "30days"
-            ? "30 DAY"
-            : timeRange === "90days"
-              ? "90 DAY"
-              : "1 YEAR"
-      })`
-    : ""
-}
+${dateRange?.from ? `WHERE created_at ${getSqlDateFilter()}` : ""}
 GROUP BY DATE(created_at)
 ORDER BY date;`}
                   />
@@ -776,7 +794,7 @@ ORDER BY date;`}
                       <ResponsiveChartContainer
                         yAxisInteger={true}
                         minDomain={0}
-                        maxDomain={getMaxValue(filterDataByTimeRange(chartData.followerGrowthOverTime), "count")}
+                        maxDomain={getMaxValue(filterDataByDateRange(chartData.followerGrowthOverTime), "count")}
                       >
                         <ChartContainer
                           config={{
@@ -788,7 +806,7 @@ ORDER BY date;`}
                         >
                           <ResponsiveContainer width="100%" height={300}>
                             <LineChart
-                              data={filterDataByTimeRange(chartData.followerGrowthOverTime)}
+                              data={filterDataByDateRange(chartData.followerGrowthOverTime)}
                               margin={{ top: 5, right: 10, left: 10, bottom: 0 }}
                             >
                               <XAxis
@@ -834,21 +852,10 @@ ORDER BY date;`}
                     query={`SELECT u.username, COUNT(f.follower_id) as followers
 FROM users u
 JOIN follows f ON u.id = f.followee_id
-${
-  timeRange !== "all"
-    ? `WHERE f.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-        timeRange === "7days"
-          ? "7 DAY"
-          : timeRange === "30days"
-            ? "30 DAY"
-            : timeRange === "90days"
-              ? "90 DAY"
-              : "1 YEAR"
-      })`
-    : ""
-}
+${dateRange?.from ? `WHERE f.created_at ${getSqlDateFilter()}` : ""}
 GROUP BY u.id, u.username
-ORDER BY followers DESC;`}
+ORDER BY followers DESC
+${getSqlLimitClause()};`}
                   />
                   <Card>
                     <CardHeader>
@@ -867,7 +874,7 @@ ORDER BY followers DESC;`}
                         >
                           <ResponsiveContainer width="100%" height={300}>
                             <BarChart
-                              data={chartData.mostFollowedUsers}
+                              data={applyDataLimit(chartData.mostFollowedUsers)}
                               margin={{ top: 5, right: 10, left: 10, bottom: 20 }}
                             >
                               <XAxis
@@ -910,21 +917,10 @@ ORDER BY followers DESC;`}
 FROM tags t
 JOIN photo_tags pt ON t.id = pt.tag_id
 JOIN photos p ON pt.photo_id = p.id
-${
-  timeRange !== "all"
-    ? `WHERE p.created_dat >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-        timeRange === "7days"
-          ? "7 DAY"
-          : timeRange === "30days"
-            ? "30 DAY"
-            : timeRange === "90days"
-              ? "90 DAY"
-              : "1 YEAR"
-      })`
-    : ""
-}
+${dateRange?.from ? `WHERE p.created_dat ${getSqlDateFilter()}` : ""}
 GROUP BY t.id, t.tag_name
-ORDER BY count DESC;`}
+ORDER BY count DESC
+${getSqlLimitClause()};`}
                   />
                   <Card>
                     <CardHeader>
@@ -936,7 +932,7 @@ ORDER BY count DESC;`}
                         <ResponsiveContainer width="100%" height={300}>
                           <RechartsPieChart>
                             <Pie
-                              data={chartData.mostUsedTags}
+                              data={applyDataLimit(chartData.mostUsedTags)}
                               cx="50%"
                               cy="50%"
                               labelLine={false}
@@ -946,7 +942,7 @@ ORDER BY count DESC;`}
                               nameKey="name"
                               label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                             >
-                              {chartData.mostUsedTags.map((entry, index) => (
+                              {applyDataLimit(chartData.mostUsedTags).map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                               ))}
                             </Pie>
@@ -976,19 +972,7 @@ ORDER BY count DESC;`}
   FROM photos p
   JOIN photo_tags pt ON p.id = pt.photo_id
   JOIN tags t ON pt.tag_id = t.id
-  ${
-    timeRange !== "all"
-      ? `WHERE p.created_dat >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-          timeRange === "7days"
-            ? "7 DAY"
-            : timeRange === "30days"
-              ? "30 DAY"
-              : timeRange === "90days"
-                ? "90 DAY"
-                : "1 YEAR"
-        })`
-      : ""
-  }
+  ${dateRange?.from ? `WHERE p.created_dat ${getSqlDateFilter()}` : ""}
   GROUP BY DATE(p.created_dat), t.tag_name
 ),
 top_tags AS (
@@ -996,7 +980,7 @@ top_tags AS (
   FROM tag_counts
   GROUP BY tag_name
   ORDER BY SUM(tag_count) DESC
-  LIMIT 3
+  LIMIT ${dataLimit > 0 ? Math.min(dataLimit, 5) : 5}
 )
 SELECT tc.date, tc.tag_name, tc.tag_count
 FROM tag_counts tc
@@ -1012,7 +996,9 @@ ORDER BY tc.date, tc.tag_count DESC;`}
                       <ResponsiveChartContainer yAxisInteger={true}>
                         {chartData.trendingTagsOverTime.length > 0 && (
                           <ChartContainer
-                            config={Object.keys(formatTrendingTagsData(chartData.trendingTagsOverTime)[0] || {})
+                            config={Object.keys(
+                              formatTrendingTagsData(filterDataByDateRange(chartData.trendingTagsOverTime))[0] || {},
+                            )
                               .filter((key) => key !== "date")
                               .reduce((acc, tag, index) => {
                                 acc[tag] = {
@@ -1024,7 +1010,7 @@ ORDER BY tc.date, tc.tag_count DESC;`}
                           >
                             <ResponsiveContainer width="100%" height={300}>
                               <LineChart
-                                data={filterDataByTimeRange(formatTrendingTagsData(chartData.trendingTagsOverTime))}
+                                data={filterDataByDateRange(formatTrendingTagsData(chartData.trendingTagsOverTime))}
                                 margin={{ top: 5, right: 10, left: 10, bottom: 0 }}
                               >
                                 <XAxis
@@ -1048,7 +1034,10 @@ ORDER BY tc.date, tc.tag_count DESC;`}
                                 />
                                 <CartesianGrid vertical={false} strokeDasharray="3 3" />
                                 <ChartTooltip content={<ChartTooltipContent />} />
-                                {Object.keys(formatTrendingTagsData(chartData.trendingTagsOverTime)[0] || {})
+                                {Object.keys(
+                                  formatTrendingTagsData(filterDataByDateRange(chartData.trendingTagsOverTime))[0] ||
+                                    {},
+                                )
                                   .filter((key) => key !== "date")
                                   .map((tag, index) => (
                                     <Line
@@ -1086,22 +1075,11 @@ FROM users u
 JOIN photos p ON u.id = p.user_id
 JOIN photo_tags pt ON p.id = pt.photo_id
 JOIN tags t ON pt.tag_id = t.id
-${
-  timeRange !== "all"
-    ? `WHERE p.created_dat >= DATE_SUB(CURRENT_DATE(), INTERVAL ${
-        timeRange === "7days"
-          ? "7 DAY"
-          : timeRange === "30days"
-            ? "30 DAY"
-            : timeRange === "90days"
-              ? "90 DAY"
-              : "1 YEAR"
-      })`
-    : ""
-}
+${dateRange?.from ? `WHERE p.created_dat ${getSqlDateFilter()}` : ""}
 GROUP BY u.id, u.username, t.id, t.tag_name
 HAVING COUNT(pt.photo_id) > 0
-ORDER BY u.username, tag_count DESC;`}
+ORDER BY u.username, tag_count DESC
+${getSqlLimitClause()};`}
                     />
                   </CardHeader>
                   <CardContent className="pt-2">
@@ -1110,7 +1088,7 @@ ORDER BY u.username, tag_count DESC;`}
                         <div className="min-w-[800px] overflow-x-auto">
                           <div className="grid grid-cols-[150px_repeat(8,1fr)] gap-1">
                             <div className="font-medium p-2">User</div>
-                            {Object.keys(chartData.userTagPreferences[0]?.tagPreferences || {})
+                            {Object.keys(applyDataLimit(chartData.userTagPreferences)[0]?.tagPreferences || {})
                               .slice(0, 8)
                               .map((tag) => (
                                 <div key={tag} className="font-medium p-2 text-center">
@@ -1118,7 +1096,7 @@ ORDER BY u.username, tag_count DESC;`}
                                 </div>
                               ))}
 
-                            {chartData.userTagPreferences.map((user, i) => (
+                            {applyDataLimit(chartData.userTagPreferences).map((user, i) => (
                               <React.Fragment key={i}>
                                 <div className="font-medium p-2 truncate" title={user.username}>
                                   {user.username}
@@ -1128,7 +1106,9 @@ ORDER BY u.username, tag_count DESC;`}
                                   .map((tag) => {
                                     const value = user.tagPreferences[tag] || 0
                                     const maxValue = Math.max(
-                                      ...chartData.userTagPreferences.map((u) => u.tagPreferences[tag] || 0),
+                                      ...applyDataLimit(chartData.userTagPreferences).map(
+                                        (u) => u.tagPreferences[tag] || 0,
+                                      ),
                                     )
                                     const intensity = maxValue > 0 ? Math.min(value / maxValue, 1) : 0
                                     const bgColor = `rgba(124, 58, 237, ${intensity})`

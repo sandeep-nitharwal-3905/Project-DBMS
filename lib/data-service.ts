@@ -94,17 +94,14 @@ function parseCSV<T>(csvText: string): Partial<T>[] {
 
 // Fetch all data sources
 export async function fetchAllData() {
-  // Use remote URLs for data sources
-  const usersUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/users-gfWSXPT54zsAHIPV9J5s8tJ64CQEXM.csv"
-  const tagsUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/tags-RWekJmNrhrazo2C88eqFBMsrGQ6m92.csv"
-  const followsUrl =
-    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/follows-j1s7i40vPJ3Vf1Gjz2Ivhi6I4cpK52.csv"
-  const photoTagsUrl =
-    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photo_tags-ilrSSgaMVSYg0GJsBtxHVgJwFMzjb9.csv"
-  const photosUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photos-RI4DtVB9yrYmuFxOwxIP9ovI6nGQm3.csv"
-  const commentsUrl =
-    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/comments-IObgHauKZQUQEvnyabIQ6kVhoUibAH.csv"
-  const likesUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/likes-cQiKO7rxzi00UbnkSLLImUNfH8HTc3.csv"
+  // Local CSV file paths in the public folder
+  const usersUrl = "/data/users.csv"
+  const tagsUrl = "/data/tags.csv"
+  const followsUrl = "/data/follows.csv"
+  const photoTagsUrl = "/data/photo_tags.csv"
+  const photosUrl = "/data/photos.csv"
+  const commentsUrl = "/data/comments.csv"
+  const likesUrl = "/data/likes.csv"
 
   const [users, tags, follows, photoTags, photos, comments, likes] = await Promise.all([
     fetchCSV<User>(usersUrl, validateUser),
@@ -126,6 +123,7 @@ export async function fetchAllData() {
     likes,
   }
 }
+
 
 // Search users by username (prefix or full match)
 export function searchUsersByUsername(users: User[], query: string): User[] {

@@ -76,6 +76,9 @@ export default function DataAnalysisPage() {
         const newUsersData = getNewUsersOverTime(data.users)
         const mostActiveUsersData = getMostActiveUsers(data.users, data.photos, data.likes, data.comments)
         const photoLikesTrendData = getPhotoLikesTrend(data.likes)
+        {
+          console.log("Photo Likes Trend Data:", photoLikesTrendData)
+        }
         const topLikedPhotosData = getTopLikedPhotos(data.photos, data.likes, data.users)
         const topCommentedPhotosData = getTopCommentedPhotos(data.photos, data.comments, data.users)
         const mostEngagingUsersData = getMostEngagingUsers(data.users, data.photos, data.likes, data.comments)
@@ -543,9 +546,6 @@ ORDER BY date;`}
                                 tick={{ fontSize: 12 }}
                                 tickFormatter={(value) => {
                                   const date = new Date(value)
-                                  {
-                                    console.log(date)
-                                  }
                                   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" })
                                 }}
                               />

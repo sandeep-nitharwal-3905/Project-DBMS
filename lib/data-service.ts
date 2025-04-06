@@ -112,6 +112,9 @@ export async function fetchAllData() {
     fetchCSV<Comment>(commentsUrl, validateComment),
     fetchCSV<Like>(likesUrl, validateLike),
   ])
+  {
+    console.log(users);
+  }
 
   return {
     users,

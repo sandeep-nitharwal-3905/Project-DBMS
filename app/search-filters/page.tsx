@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { ArrowLeft, Search, Filter, X, Loader2 } from "lucide-react"
 import Link from "next/link"
 import type { DateRange } from "react-day-picker"
@@ -221,11 +221,23 @@ export default function SearchFiltersPage() {
     }
 
     if (filters.users.dateRange?.from) {
-      filteredUsers = searchUsersByDateRange(filteredUsers, filters.users.dateRange.from, filters.users.dateRange.to)
-      addFilter(
-        `User created: ${filters.users.dateRange.from.toLocaleDateString()} - ${filters.users.dateRange.to?.toLocaleDateString() || "now"}`,
-      )
+      // Ensure the dates are Date objects
+      const fromDate = filters.users.dateRange.from instanceof Date 
+        ? filters.users.dateRange.from 
+        : new Date(filters.users.dateRange.from);
+      const toDate = filters.users.dateRange.to 
+        ? (filters.users.dateRange.to instanceof Date 
+             ? filters.users.dateRange.to 
+             : new Date(filters.users.dateRange.to))
+        : new Date();
+    
+      // Apply the date range filter
+      filteredUsers = searchUsersByDateRange(filteredUsers, fromDate, toDate);
+    
+      // Add the filter description with formatted dates
+      addFilter(`User created: ${fromDate.toLocaleDateString()} - ${toDate.toLocaleDateString()}`);
     }
+    
 
     // Apply photo filters
     if (filters.photos.userId) {
@@ -624,7 +636,7 @@ ORDER BY created_at DESC;`}
                                       <span className="font-medium">ID:</span> {user.id}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                      <span className="font-medium">Created:</span>{" "}
+                                      <span className="font-medium">Created (MM/DD/YYYY):</span>{" "}
                                       {new Date(user.created_at).toLocaleDateString()}{" "}
                                       {new Date(user.created_at).toLocaleTimeString()}
                                     </p>

@@ -543,6 +543,9 @@ ORDER BY date;`}
                                 tick={{ fontSize: 12 }}
                                 tickFormatter={(value) => {
                                   const date = new Date(value)
+                                  {
+                                    console.log(date)
+                                  }
                                   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" })
                                 }}
                               />

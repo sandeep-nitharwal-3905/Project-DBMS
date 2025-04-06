@@ -13,30 +13,39 @@ import type { User, Tag, Photo, PhotoTag, Like, Follow, Comment } from "./data-s
  * @returns A valid date string or null if invalid
  */
 export function validateDate(dateStr: string): string | null {
-  if (!dateStr || dateStr.trim() === "") return null
+  // Return null if the input is empty or just whitespace
+  if (!dateStr || dateStr.trim() === "") return null;
 
-  // Try to parse the date
-  const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return null
+  // Try to parse the date string
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return null;
 
-  // Format as ISO string for consistency
-  return date.toISOString()
+  // Return the date as an ISO string (e.g., "2025-04-04T15:43:49.548Z")
+  return date.toISOString();
 }
 
 /**
- * Validates and cleans a user record
+ * Validates and cleans a user record.
+ * Ensures the user has an id and username and a valid created_at date.
+ * If the provided created_at is invalid, it defaults to the current date/time.
  */
 export function validateUser(user: Partial<User>): User | null {
-  if (!user.id || !user.username) return null
+  // Ensure mandatory fields are present
+  if (!user.id || !user.username) return null;
 
-  const validatedDate = validateDate(user.created_at || "")
+  // Validate the created_at date field
+  {
+    console.log("user", user.created_at);
+  }
+  const validatedDate = validateDate(user.created_at || "");
 
   return {
     id: user.id,
     username: user.username,
     created_at: validatedDate || new Date().toISOString(), // Default to current date if invalid
-  }
+  };
 }
+
 
 /**
  * Validates and cleans a tag record

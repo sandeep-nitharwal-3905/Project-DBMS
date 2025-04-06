@@ -132,7 +132,7 @@ export async function fetchAllData() {
 export function searchUsersByUsername(users: User[], query: string): User[] {
   if (!query) return users
   const lowercaseQuery = query.toLowerCase()
-  return users.filter((user) => user.username.toLowerCase().includes(lowercaseQuery))
+  return users.filter((user) => user.username.toLowerCase().includes(lowercaseQuery)).sort((a, b) => a.username.localeCompare(b.username))
 }
 
 // Search users by creation date range

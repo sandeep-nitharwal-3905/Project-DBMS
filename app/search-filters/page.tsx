@@ -606,7 +606,7 @@ export default function SearchFiltersPage() {
                           title="SQL Query for User Search"
                           query={`SELECT id, username, created_at
 FROM users
-${filters.users.username ? `WHERE username LIKE '%${filters.users.username}%'` : ""}
+${filters.users.username ? `WHERE username LIKE '${filters.users.username}%'` : ""}
 ${
   filters.users.dateRange?.from
     ? `${filters.users.username ? "AND" : "WHERE"} created_at BETWEEN 
@@ -614,7 +614,7 @@ ${
   '${filters.users.dateRange.to ? filters.users.dateRange.to.toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}'`
     : ""
 }
-ORDER BY created_at DESC;`}
+ORDER BY id;`}
                         />
                         <ScrollArea className="h-[500px]">
                           {searchResults.users.length > 0 ? (
@@ -626,7 +626,7 @@ ORDER BY created_at DESC;`}
                                 >
                                   <Avatar className="h-12 w-12 mr-4">
                                     <AvatarImage
-                                      src={`/placeholder.svg?height=48&width=48&text=${user.username.charAt(0)}`}
+                                      src={`https://picsum.photos/48?random=${user?.username?.charCodeAt(0) || 0}`}
                                     />
                                     <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                                   </Avatar>
@@ -689,7 +689,7 @@ ${
   )`
     : ""
 }
-ORDER BY p.created_dat DESC;`}
+ORDER BY p.id;`} 
                         />
                         <ScrollArea className="h-[500px]">
                           {searchResults.photos.length > 0 ? (
@@ -716,7 +716,7 @@ ORDER BY p.created_dat DESC;`}
                                   >
                                     <div className="aspect-square relative bg-muted">
                                       <img
-                                        src={`/placeholder.svg?height=300&width=300&text=Photo${photo.id}`}
+                                        src={`https://picsum.photos/300?random=${photo.id}`}
                                         alt={`Photo ${photo.id}`}
                                         className="w-full h-full object-cover"
                                       />
@@ -726,7 +726,7 @@ ORDER BY p.created_dat DESC;`}
                                         <div className="flex items-center">
                                           <Avatar className="h-6 w-6 mr-2">
                                             <AvatarImage
-                                              src={`/placeholder.svg?height=24&width=24&text=${user?.username?.charAt(0) || "?"}`}
+                                              src={`https://picsum.photos/48?random=${user?.username?.charCodeAt(0) || 0}`}
                                             />
                                             <AvatarFallback>
                                               {user?.username?.charAt(0).toUpperCase() || "?"}
@@ -796,7 +796,7 @@ ${
   '${filters.comments.dateRange.to ? filters.comments.dateRange.to.toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}'`
     : ""
 }
-ORDER BY c.created_at DESC;`}
+ORDER BY c.id;`}
                         />
                         <ScrollArea className="h-[500px]">
                           {searchResults.comments.length > 0 ? (
@@ -813,7 +813,7 @@ ORDER BY c.created_at DESC;`}
                                     <div className="flex items-center mb-3">
                                       <Avatar className="h-8 w-8 mr-2">
                                         <AvatarImage
-                                          src={`/placeholder.svg?height=32&width=32&text=${user?.username?.charAt(0) || "?"}`}
+                                          src={`https://picsum.photos/48?random=${user?.username?.charCodeAt(0) || 0}`}
                                         />
                                         <AvatarFallback>
                                           {user?.username?.charAt(0).toUpperCase() || "?"}
@@ -865,7 +865,7 @@ LEFT JOIN photo_tags pt ON t.id = pt.tag_id
 ${filters.tags.name ? `WHERE t.tag_name LIKE '%${filters.tags.name}%'` : ""}
 GROUP BY t.id, t.tag_name, t.created_at
 ${filters.tags.minPopularity > 0 ? `HAVING COUNT(pt.photo_id) >= ${filters.tags.minPopularity}` : ""}
-ORDER BY popularity DESC;`}
+ORDER BY t.id';`}
                         />
                         <ScrollArea className="h-[500px]">
                           {searchResults.tags.length > 0 ? (
@@ -905,7 +905,7 @@ ORDER BY popularity DESC;`}
                                           {recentPhotos.map((photoId) => (
                                             <div key={photoId} className="w-12 h-12 rounded bg-muted overflow-hidden">
                                               <img
-                                                src={`/placeholder.svg?height=48&width=48&text=${photoId}`}
+                                                src={`https://picsum.photos/48?random=${photoId}`}
                                                 alt={`Photo ${photoId}`}
                                                 className="w-full h-full object-cover"
                                               />
@@ -953,7 +953,7 @@ ${
   '${filters.follows.dateRange.to ? filters.follows.dateRange.to.toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}'`
     : ""
 }
-ORDER BY f.created_at DESC;`}
+ORDER BY f.id;`}
                         />
                         <ScrollArea className="h-[500px]">
                           {searchResults.follows.length > 0 ? (
@@ -970,7 +970,7 @@ ORDER BY f.created_at DESC;`}
                                     <div className="flex items-center">
                                       <Avatar className="h-12 w-12 mr-4">
                                         <AvatarImage
-                                          src={`/placeholder.svg?height=48&width=48&text=${follower?.username?.charAt(0) || "?"}`}
+                                          src={`https://picsum.photos/48?random=${follower?.username?.charCodeAt(0) || 0}`}
                                         />
                                         <AvatarFallback>
                                           {follower?.username?.charAt(0).toUpperCase() || "?"}
@@ -992,9 +992,6 @@ ORDER BY f.created_at DESC;`}
                                         </p>
                                       </div>
                                     </div>
-                                    <Button variant="outline" size="sm">
-                                      View Profile
-                                    </Button>
                                   </div>
                                 )
                               })}

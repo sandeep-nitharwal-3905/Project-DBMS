@@ -10,6 +10,95 @@ import {
   validateRecords,
 } from "./csv-validator"
 
+// Utility function to parse date strings in various formats
+function parseDateString(dateStr: string | undefined): Date | null {
+  if (!dateStr) {
+    console.log("Empty date string provided");
+    return null;
+  }
+
+  try {
+    // Try parsing as "DD-MM-YYYY HH:MM" format
+    const ddmmyyyyMatch = dateStr.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})$/);
+    if (ddmmyyyyMatch) {
+      const [_, day, month, year, hours, minutes] = ddmmyyyyMatch;
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes));
+      if (!isNaN(date.getTime())) {
+        console.log(`Successfully parsed date ${dateStr} in DD-MM-YYYY HH:MM format`);
+        return date;
+      }
+    }
+
+    // Try parsing as "YYYY-MM-DD HH:MM:SS" format
+    const yyyymmddMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
+    if (yyyymmddMatch) {
+      const [_, year, month, day, hours, minutes, seconds] = yyyymmddMatch;
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes), parseInt(seconds));
+      if (!isNaN(date.getTime())) {
+        console.log(`Successfully parsed date ${dateStr} in YYYY-MM-DD HH:MM:SS format`);
+        return date;
+      }
+    }
+
+    // Try parsing as ISO format
+    const isoDate = new Date(dateStr);
+    if (!isNaN(isoDate.getTime())) {
+      console.log(`Successfully parsed date ${dateStr} in ISO format`);
+      return isoDate;
+    }
+
+    // Try parsing as "YYYY-MM-DD" format
+    const simpleDateMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (simpleDateMatch) {
+      const [_, year, month, day] = simpleDateMatch;
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      if (!isNaN(date.getTime())) {
+        console.log(`Successfully parsed date ${dateStr} in YYYY-MM-DD format`);
+        return date;
+      }
+    }
+
+    // Try parsing as "MM/DD/YYYY" format
+    const mmddyyyyMatch = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (mmddyyyyMatch) {
+      const [_, month, day, year] = mmddyyyyMatch;
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      if (!isNaN(date.getTime())) {
+        console.log(`Successfully parsed date ${dateStr} in MM/DD/YYYY format`);
+        return date;
+      }
+    }
+
+    console.log(`Failed to parse date string: ${dateStr}`);
+    return null;
+  } catch (error) {
+    console.error(`Error parsing date string: ${dateStr}`, error);
+    return null;
+  }
+}
+
+// Utility function to check if a date falls within a range
+function isDateInRange(date: Date, startDate?: Date, endDate?: Date): boolean {
+  if (!date || isNaN(date.getTime())) {
+    console.log("Invalid date provided for range check");
+    return false;
+  }
+
+  if (!startDate && !endDate) {
+    return true;
+  }
+
+  if (startDate && date < startDate) {
+    return false;
+  }
+
+  if (endDate && date > endDate) {
+    return false;
+  }
+
+  return true;
+}
+
 export interface User {
   id: string
   username: string
@@ -340,6 +429,8 @@ export function getMostActiveUsers(
   photos: Photo[],
   likes: Like[],
   comments: Comment[],
+  startDate?: Date,
+  endDate?: Date,
 ): { username: string; posts: number; likes: number; comments: number }[] {
   const userActivity: Record<string, { username: string; posts: number; likes: number; comments: number }> = {}
 
@@ -353,23 +444,26 @@ export function getMostActiveUsers(
     }
   })
 
-  // Count posts
+  // Count posts within date range
   photos.forEach((photo) => {
-    if (userActivity[photo.user_id]) {
+    const photoDate = parseDateString(photo.created_dat)
+    if (photoDate && isDateInRange(photoDate, startDate, endDate) && userActivity[photo.user_id]) {
       userActivity[photo.user_id].posts += 1
     }
   })
 
-  // Count likes given
+  // Count likes within date range
   likes.forEach((like) => {
-    if (userActivity[like.user_id]) {
+    const likeDate = parseDateString(like.created_at)
+    if (likeDate && isDateInRange(likeDate, startDate, endDate) && userActivity[like.user_id]) {
       userActivity[like.user_id].likes += 1
     }
   })
 
-  // Count comments made
+  // Count comments within date range
   comments.forEach((comment) => {
-    if (userActivity[comment.user_id]) {
+    const commentDate = parseDateString(comment.created_at)
+    if (commentDate && isDateInRange(commentDate, startDate, endDate) && userActivity[comment.user_id]) {
       userActivity[comment.user_id].comments += 1
     }
   })
@@ -380,7 +474,6 @@ export function getMostActiveUsers(
     const totalB = b.posts + b.likes + b.comments
     return totalB - totalA
   })
-  // Return all active users
 }
 
 // Get photo likes trend over time
@@ -411,12 +504,17 @@ export function getTopLikedPhotos(
   photos: Photo[],
   likes: Like[],
   users: User[],
+  startDate?: Date,
+  endDate?: Date,
 ): { photoId: string; username: string; likes: number }[] {
-  // Count likes for each photo
+  // Count likes for each photo within date range
   const likeCounts: Record<string, number> = {}
 
   likes.forEach((like) => {
-    likeCounts[like.photo_id] = (likeCounts[like.photo_id] || 0) + 1
+    const likeDate = parseDateString(like.created_at)
+    if (likeDate && isDateInRange(likeDate, startDate, endDate)) {
+      likeCounts[like.photo_id] = (likeCounts[like.photo_id] || 0) + 1
+    }
   })
 
   // Create a map of user IDs to usernames
@@ -433,7 +531,6 @@ export function getTopLikedPhotos(
       likes: likeCounts[photo.id] || 0,
     }))
     .sort((a, b) => b.likes - a.likes)
-  // Return all liked photos
 }
 
 // Get top commented photos
@@ -441,12 +538,17 @@ export function getTopCommentedPhotos(
   photos: Photo[],
   comments: Comment[],
   users: User[],
+  startDate?: Date,
+  endDate?: Date,
 ): { photoId: string; username: string; comments: number }[] {
-  // Count comments for each photo
+  // Count comments for each photo within date range
   const commentCounts: Record<string, number> = {}
 
   comments.forEach((comment) => {
-    commentCounts[comment.photo_id] = (commentCounts[comment.photo_id] || 0) + 1
+    const commentDate = parseDateString(comment.created_at)
+    if (commentDate && isDateInRange(commentDate, startDate, endDate)) {
+      commentCounts[comment.photo_id] = (commentCounts[comment.photo_id] || 0) + 1
+    }
   })
 
   // Create a map of user IDs to usernames
@@ -463,7 +565,6 @@ export function getTopCommentedPhotos(
       comments: commentCounts[photo.id] || 0,
     }))
     .sort((a, b) => b.comments - a.comments)
-  // Return all commented photos
 }
 
 // Get most engaging users (total likes + comments received)
@@ -472,6 +573,8 @@ export function getMostEngagingUsers(
   photos: Photo[],
   likes: Like[],
   comments: Comment[],
+  startDate?: Date,
+  endDate?: Date,
 ): { username: string; likes: number; comments: number }[] {
   // Map photos to their user IDs
   const photoUserMap: Record<string, string> = {}
@@ -479,7 +582,7 @@ export function getMostEngagingUsers(
     photoUserMap[photo.id] = photo.user_id
   })
 
-  // Count likes and comments received by each user
+  // Count likes and comments received by each user within date range
   const userEngagement: Record<string, { likes: number; comments: number }> = {}
 
   // Initialize for all users
@@ -487,19 +590,25 @@ export function getMostEngagingUsers(
     userEngagement[user.id] = { likes: 0, comments: 0 }
   })
 
-  // Count likes received
+  // Count likes received within date range
   likes.forEach((like) => {
-    const userId = photoUserMap[like.photo_id]
-    if (userId && userEngagement[userId]) {
-      userEngagement[userId].likes += 1
+    const likeDate = parseDateString(like.created_at)
+    if (likeDate && isDateInRange(likeDate, startDate, endDate)) {
+      const userId = photoUserMap[like.photo_id]
+      if (userId && userEngagement[userId]) {
+        userEngagement[userId].likes += 1
+      }
     }
   })
 
-  // Count comments received
+  // Count comments received within date range
   comments.forEach((comment) => {
-    const userId = photoUserMap[comment.photo_id]
-    if (userId && userEngagement[userId]) {
-      userEngagement[userId].comments += 1
+    const commentDate = parseDateString(comment.created_at)
+    if (commentDate && isDateInRange(commentDate, startDate, endDate)) {
+      const userId = photoUserMap[comment.photo_id]
+      if (userId && userEngagement[userId]) {
+        userEngagement[userId].comments += 1
+      }
     }
   })
 
@@ -515,7 +624,6 @@ export function getMostEngagingUsers(
       const totalB = b.likes + b.comments
       return totalB - totalA
     })
-  // Return all engaging users
 }
 
 // Get follower growth over time
@@ -542,12 +650,20 @@ export function getFollowerGrowthOverTime(follows: Follow[]): { date: string; co
 }
 
 // Get most followed users
-export function getMostFollowedUsers(users: User[], follows: Follow[]): { username: string; followers: number }[] {
-  // Count followers for each user
+export function getMostFollowedUsers(
+  users: User[],
+  follows: Follow[],
+  startDate?: Date,
+  endDate?: Date,
+): { username: string; followers: number }[] {
+  // Count followers for each user within date range
   const followerCounts: Record<string, number> = {}
 
   follows.forEach((follow) => {
-    followerCounts[follow.followee_id] = (followerCounts[follow.followee_id] || 0) + 1
+    const followDate = parseDateString(follow.created_at)
+    if (followDate && isDateInRange(followDate, startDate, endDate)) {
+      followerCounts[follow.followee_id] = (followerCounts[follow.followee_id] || 0) + 1
+    }
   })
 
   // Map to array with usernames
@@ -557,7 +673,6 @@ export function getMostFollowedUsers(users: User[], follows: Follow[]): { userna
       followers: followerCounts[user.id] || 0,
     }))
     .sort((a, b) => b.followers - a.followers)
-  // Return all followed users
 }
 
 // Get trending tags over time
@@ -565,15 +680,20 @@ export function getTrendingTagsOverTime(
   tags: Tag[],
   photoTags: PhotoTag[],
   photos: Photo[],
+  startDate?: Date,
+  endDate?: Date
 ): { date: string; tagCounts: Record<string, number> }[] {
   // Create a map of photo IDs to their creation dates
   const photoDateMap: Record<string, string> = {}
   photos.forEach((photo) => {
     try {
-      const date = new Date(photo.created_dat)
-      if (isNaN(date.getTime())) return
+      const date = parseDateString(photo.created_dat)
+      if (!date) return
 
-      photoDateMap[photo.id] = date.toISOString().split("T")[0] // Extract date part
+      // Only include photos within the date range
+      if (isDateInRange(date, startDate, endDate)) {
+        photoDateMap[photo.id] = date.toISOString().split("T")[0] // Extract date part
+      }
     } catch (e) {
       // Skip invalid dates
     }
@@ -608,12 +728,46 @@ export function getTrendingTagsOverTime(
 }
 
 // Get most used tags
-export function getMostUsedTags(tags: Tag[], photoTags: PhotoTag[]): { name: string; count: number }[] {
-  // Count occurrences of each tag
+export function getMostUsedTags(
+  tags: Tag[], 
+  photoTags: PhotoTag[], 
+  photos: Photo[],
+  startDate?: Date, 
+  endDate?: Date
+): { name: string; count: number }[] {
+  // Create a map of photo IDs that are within the date range
+  const validPhotoIds = new Set<string>();
+  
+  // Safely process photos with error handling
+  if (!Array.isArray(photos)) {
+    console.error("Photos is not an array:", photos);
+    return [];
+  }
+  
+  photos.forEach((photo) => {
+    try {
+      // Check if photo is a valid object with required properties
+      if (!photo || typeof photo !== 'object' || !photo.id || !photo.created_dat) {
+        console.log(`Invalid photo object: ${JSON.stringify(photo)}`);
+        return;
+      }
+      
+      const photoDate = parseDateString(photo.created_dat);
+      if (photoDate && isDateInRange(photoDate, startDate, endDate)) {
+        validPhotoIds.add(photo.id);
+      }
+    } catch (error) {
+      console.error(`Error processing photo: ${JSON.stringify(photo)}`, error);
+    }
+  });
+
+  // Count occurrences of each tag only for photos within the date range
   const tagCounts: Record<string, number> = {}
 
   photoTags.forEach((pt) => {
-    tagCounts[pt.tag_id] = (tagCounts[pt.tag_id] || 0) + 1
+    if (validPhotoIds.has(pt.photo_id)) {
+      tagCounts[pt.tag_id] = (tagCounts[pt.tag_id] || 0) + 1
+    }
   })
 
   // Map to array with tag names
@@ -623,7 +777,6 @@ export function getMostUsedTags(tags: Tag[], photoTags: PhotoTag[]): { name: str
       count: tagCounts[tag.id] || 0,
     }))
     .sort((a, b) => b.count - a.count)
-  // Return all tags
 }
 
 // Get user preferences based on tags
@@ -632,12 +785,32 @@ export function getUserPreferencesByTags(
   photos: Photo[],
   photoTags: PhotoTag[],
   tags: Tag[],
+  startDate?: Date,
+  endDate?: Date
 ): { username: string; tagPreferences: Record<string, number> }[] {
   // Create a map of photo IDs to their user IDs
   const photoUserMap: Record<string, string> = {}
+  
+  // Create a set of valid photo IDs within the date range
+  const validPhotoIds = new Set<string>();
+  
   photos.forEach((photo) => {
-    photoUserMap[photo.id] = photo.user_id
-  })
+    try {
+      // Check if photo is a valid object with required properties
+      if (!photo || typeof photo !== 'object' || !photo.id || !photo.created_dat) {
+        console.log(`Invalid photo object: ${JSON.stringify(photo)}`);
+        return;
+      }
+      
+      const photoDate = parseDateString(photo.created_dat);
+      if (photoDate && isDateInRange(photoDate, startDate, endDate)) {
+        validPhotoIds.add(photo.id);
+        photoUserMap[photo.id] = photo.user_id;
+      }
+    } catch (error) {
+      console.error(`Error processing photo: ${JSON.stringify(photo)}`, error);
+    }
+  });
 
   // Create a map of tag IDs to tag names
   const tagNameMap: Record<string, string> = {}
@@ -653,13 +826,15 @@ export function getUserPreferencesByTags(
     userTagPreferences[user.id] = {}
   })
 
-  // Count tag usage
+  // Count tag usage only for photos within the date range
   photoTags.forEach((pt) => {
-    const userId = photoUserMap[pt.photo_id]
-    const tagName = tagNameMap[pt.tag_id]
+    if (validPhotoIds.has(pt.photo_id)) {
+      const userId = photoUserMap[pt.photo_id]
+      const tagName = tagNameMap[pt.tag_id]
 
-    if (userId && tagName && userTagPreferences[userId]) {
-      userTagPreferences[userId][tagName] = (userTagPreferences[userId][tagName] || 0) + 1
+      if (userId && tagName && userTagPreferences[userId]) {
+        userTagPreferences[userId][tagName] = (userTagPreferences[userId][tagName] || 0) + 1
+      }
     }
   })
 
@@ -675,6 +850,5 @@ export function getUserPreferencesByTags(
       const totalB = Object.values(b.tagPreferences).reduce((sum, count) => sum + (count as number), 0)
       return totalB - totalA
     })
-  // Return all users with tag preferences
 }
 

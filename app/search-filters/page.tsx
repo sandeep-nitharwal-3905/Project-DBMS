@@ -37,6 +37,17 @@ import {
   getTagsByPopularity,
   getFollowers,
   getFollowing,
+  getTrendingTagsOverTime,
+  getMostUsedTags,
+  getUserPreferencesByTags,
+  getNewUsersOverTime,
+  getMostActiveUsers,
+  getPhotoLikesTrend,
+  getTopLikedPhotos,
+  getTopCommentedPhotos,
+  getMostEngagingUsers,
+  getFollowerGrowthOverTime,
+  getMostFollowedUsers,
 } from "@/lib/data-service"
 
 // Add import for the SQL query display component
@@ -63,6 +74,7 @@ interface FilterState {
   tags: {
     name: string
     minPopularity: number
+    dateRange: DateRange | undefined
   }
   follows: {
     userId: string
@@ -130,6 +142,7 @@ export default function SearchFiltersPage() {
     tags: {
       name: "",
       minPopularity: 0,
+      dateRange: undefined,
     },
     follows: {
       userId: "",
@@ -196,6 +209,7 @@ export default function SearchFiltersPage() {
       tags: {
         name: "",
         minPopularity: 0,
+        dateRange: undefined,
       },
       follows: {
         userId: "",
@@ -297,15 +311,135 @@ export default function SearchFiltersPage() {
     }
 
     // Apply tag filters
-    if (filters.tags.name) {
-      filteredTags = searchTagsByName(filteredTags, filters.tags.name)
-      addFilter(`Tag name: ${filters.tags.name}`)
+    if (filters.tags.name || filters.tags.dateRange?.from) {
+      const fromDate = filters.tags.dateRange?.from instanceof Date 
+        ? filters.tags.dateRange.from 
+        : filters.tags.dateRange?.from ? new Date(filters.tags.dateRange.from) : undefined;
+      const toDate = filters.tags.dateRange?.to 
+        ? (filters.tags.dateRange.to instanceof Date 
+             ? filters.tags.dateRange.to 
+             : new Date(filters.tags.dateRange.to))
+        : undefined;
+      
+      filteredTags = searchTagsByName(filteredTags, filters.tags.name, fromDate, toDate);
+      
+      if (filters.tags.name) {
+        addFilter(`Tag name: ${filters.tags.name}`);
+      }
+      if (filters.tags.dateRange?.from) {
+        addFilter(`Tags created: ${fromDate?.toLocaleDateString()} - ${toDate ? toDate.toLocaleDateString() : "now"}`);
+      }
     }
 
     if (filters.tags.minPopularity > 0) {
       filteredTags = getTagsByPopularity(filteredTags, data.photoTags, filters.tags.minPopularity)
       addFilter(`Min tag popularity: ${filters.tags.minPopularity}`)
     }
+
+    // Update data analysis results with date range filtering
+    const fromDate = filters.tags.dateRange?.from instanceof Date 
+      ? filters.tags.dateRange.from 
+      : filters.tags.dateRange?.from ? new Date(filters.tags.dateRange.from) : undefined;
+    const toDate = filters.tags.dateRange?.to 
+      ? (filters.tags.dateRange.to instanceof Date 
+           ? filters.tags.dateRange.to 
+           : new Date(filters.tags.dateRange.to))
+      : undefined;
+
+    // Update trending tags data
+    const trendingTagsData = getTrendingTagsOverTime(
+      data.tags,
+      data.photoTags,
+      data.photos,
+      fromDate,
+      toDate
+    );
+
+    // Update most used tags data
+    const mostUsedTagsData = getMostUsedTags(
+      data.tags,
+      data.photoTags,
+      data.photos,
+      fromDate,
+      toDate
+    );
+
+    // Update user tag preferences data
+    const userTagPreferencesData = getUserPreferencesByTags(
+      data.users,
+      data.photos,
+      data.photoTags,
+      data.tags,
+      fromDate,
+      toDate
+    );
+
+    // Update new users over time data
+    const newUsersOverTimeData = getNewUsersOverTime(
+      data.users,
+      fromDate,
+      toDate
+    );
+
+    // Update most active users data
+    const mostActiveUsersData = getMostActiveUsers(
+      data.users,
+      data.photos,
+      data.likes,
+      data.comments,
+      fromDate,
+      toDate
+    );
+
+    // Update photo likes trend data
+    const photoLikesTrendData = getPhotoLikesTrend(
+      data.likes,
+      fromDate,
+      toDate
+    );
+
+    // Update top liked photos data
+    const topLikedPhotosData = getTopLikedPhotos(
+      data.photos,
+      data.likes,
+      data.users,
+      fromDate,
+      toDate
+    );
+
+    // Update top commented photos data
+    const topCommentedPhotosData = getTopCommentedPhotos(
+      data.photos,
+      data.comments,
+      data.users,
+      fromDate,
+      toDate
+    );
+
+    // Update most engaging users data
+    const mostEngagingUsersData = getMostEngagingUsers(
+      data.users,
+      data.photos,
+      data.likes,
+      data.comments,
+      fromDate,
+      toDate
+    );
+
+    // Update follower growth over time data
+    const followerGrowthOverTimeData = getFollowerGrowthOverTime(
+      data.follows,
+      fromDate,
+      toDate
+    );
+
+    // Update most followed users data
+    const mostFollowedUsersData = getMostFollowedUsers(
+      data.users,
+      data.follows,
+      fromDate,
+      toDate
+    );
 
     // Apply follow filters
     if (filters.follows.userId) {
@@ -516,6 +650,13 @@ export default function SearchFiltersPage() {
                           placeholder="Search by tag name"
                           value={filters.tags.name}
                           onChange={(e) => updateFilter("tags", "name", e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Tag Creation Date</label>
+                        <EnhancedDateRangePicker
+                          dateRange={filters.tags.dateRange}
+                          onDateRangeChange={(range) => updateFilter("tags", "dateRange", range)}
                         />
                       </div>
                       <div>

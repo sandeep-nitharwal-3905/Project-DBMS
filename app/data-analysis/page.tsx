@@ -74,33 +74,94 @@ export default function DataAnalysisPage() {
 
         // Process data for charts
         const newUsersData = getNewUsersOverTime(data.users)
-        const mostActiveUsersData = getMostActiveUsers(data.users, data.photos, data.likes, data.comments)
+        const mostActiveUsersData = getMostActiveUsers(
+          data.users,
+          data.photos,
+          data.likes,
+          data.comments,
+          dateRange?.from,
+          dateRange?.to
+        )
         const photoLikesTrendData = getPhotoLikesTrend(data.likes)
-        {
-          console.log("Photo Likes Trend Data:", photoLikesTrendData)
-        }
-        const topLikedPhotosData = getTopLikedPhotos(data.photos, data.likes, data.users)
-        const topCommentedPhotosData = getTopCommentedPhotos(data.photos, data.comments, data.users)
-        const mostEngagingUsersData = getMostEngagingUsers(data.users, data.photos, data.likes, data.comments)
+        const topLikedPhotosData = getTopLikedPhotos(
+          data.photos,
+          data.likes,
+          data.users,
+          dateRange?.from,
+          dateRange?.to
+        )
+        const topCommentedPhotosData = getTopCommentedPhotos(
+          data.photos,
+          data.comments,
+          data.users,
+          dateRange?.from,
+          dateRange?.to
+        )
+        const mostEngagingUsersData = getMostEngagingUsers(
+          data.users,
+          data.photos,
+          data.likes,
+          data.comments,
+          dateRange?.from,
+          dateRange?.to
+        )
         const followerGrowthData = getFollowerGrowthOverTime(data.follows)
-        const mostFollowedUsersData = getMostFollowedUsers(data.users, data.follows)
-        const trendingTagsData = getTrendingTagsOverTime(data.tags, data.photoTags, data.photos)
-        const mostUsedTagsData = getMostUsedTags(data.tags, data.photoTags)
-        const userTagPreferencesData = getUserPreferencesByTags(data.users, data.photos, data.photoTags, data.tags)
+        const mostFollowedUsersData = getMostFollowedUsers(
+          data.users,
+          data.follows,
+          dateRange?.from,
+          dateRange?.to
+        )
+        const trendingTagsData = getTrendingTagsOverTime(
+          data.tags, 
+          data.photoTags, 
+          data.photos,
+          dateRange?.from,
+          dateRange?.to
+        )
+        const mostUsedTagsData = getMostUsedTags(
+          data.tags, 
+          data.photoTags, 
+          data.photos,
+          dateRange?.from,
+          dateRange?.to
+        )
+        const userTagPreferencesData = getUserPreferencesByTags(
+          data.users, 
+          data.photos, 
+          data.photoTags, 
+          data.tags,
+          dateRange?.from,
+          dateRange?.to
+        )
 
         setChartData({
-          newUsersOverTime: newUsersData,
-          mostActiveUsers: mostActiveUsersData,
-          photoLikesTrend: photoLikesTrendData,
-          topLikedPhotos: topLikedPhotosData,
-          topCommentedPhotos: topCommentedPhotosData,
-          mostEngagingUsers: mostEngagingUsersData,
-          followerGrowthOverTime: followerGrowthData,
-          mostFollowedUsers: mostFollowedUsersData,
-          trendingTagsOverTime: trendingTagsData,
-          mostUsedTags: mostUsedTagsData,
-          userTagPreferences: userTagPreferencesData,
+          newUsersOverTime: newUsersData.slice(0, dataLimit),
+          mostActiveUsers: mostActiveUsersData.slice(0, dataLimit),
+          photoLikesTrend: photoLikesTrendData.slice(0, dataLimit),
+          topLikedPhotos: topLikedPhotosData.slice(0, dataLimit),
+          topCommentedPhotos: topCommentedPhotosData.slice(0, dataLimit),
+          mostEngagingUsers: mostEngagingUsersData.slice(0, dataLimit),
+          followerGrowthOverTime: followerGrowthData.slice(0, dataLimit),
+          mostFollowedUsers: mostFollowedUsersData.slice(0, dataLimit),
+          trendingTagsOverTime: trendingTagsData.slice(0, dataLimit),
+          mostUsedTags: mostUsedTagsData.slice(0, dataLimit),
+          userTagPreferences: userTagPreferencesData.slice(0, dataLimit),
         })
+
+        // Update active filters
+        const newFilters = []
+        if (dateRange?.from) {
+          newFilters.push(
+            `Date Range: ${dateRange.from.toLocaleDateString()} - ${
+              dateRange.to ? dateRange.to.toLocaleDateString() : "now"
+            }`
+          )
+        }
+        if (dataLimit !== 10) {
+          newFilters.push(`Limit: ${dataLimit} items`)
+        }
+        setActiveFilters(newFilters)
 
         setLoading(false)
       } catch (error) {
@@ -110,7 +171,7 @@ export default function DataAnalysisPage() {
     }
 
     loadData()
-  }, [])
+  }, [dateRange, dataLimit])
 
   // Handle date range change
   const handleDateRangeChange = (range: DateRange | undefined) => {
